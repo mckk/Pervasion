@@ -1,5 +1,9 @@
 javac -classpath /opt/tinyos-2.1.0/support/sdk/java/tinyos.jar Listen.java
 javac -classpath /opt/tinyos-2.1.0/support/sdk/java/tinyos.jar MsgReader.java
 
-java -classpath .:/opt/tinyos-2.1.0/support/sdk/java/tinyos.jar Listen -comm serial@/dev/ttyUSB1:micaz
+mig java -java-classname=SerialMsg SerialMsg.h SerialMsg -o SerialMsg.java
+
+javac -classpath /opt/tinyos-2.1.0/support/sdk/java/tinyos.jar SerialMsg.java
+
+java -classpath .:/opt/tinyos-2.1.0/support/sdk/java/tinyos.jar MsgReader SerialMsg -comm serial@/dev/ttyUSB1:micaz
 
