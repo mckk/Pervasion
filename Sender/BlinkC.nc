@@ -1,6 +1,3 @@
-//## Solution code for tutorial 3: (Sender Node Code)  of the wireless sensor network
-//## programing module of the pervasive systems course.
-
 #include "Timer.h"
 #include "DataMsg.h"
 
@@ -31,9 +28,10 @@ implementation
   message_t datapkt;
 
   bool AMBusy;
+
+  // Used to check when both checks are done
   bool temperatureRead;
   bool luxRead;
-
 
   event void Boot.booted()
   {
@@ -92,7 +90,7 @@ implementation
     }
 
 
-
+  // If both temperature and light readings occured, send the data
   task void sendData(){
     if(temperatureRead && luxRead){
 		DataMsg *pkt = NULL;

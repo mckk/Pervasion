@@ -1,6 +1,3 @@
-//## Solution sheet for tutorial 3: (Senser Node Code) of the wireless sensor network
-//## programing module of the pervasive systems course.
-
 #include <message.h>
 
 configuration BlinkAppC
