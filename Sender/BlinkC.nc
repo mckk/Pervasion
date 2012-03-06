@@ -3,11 +3,12 @@
 
 #include "Timer.h"
 #include "DataMsg.h"
-#include "SerialMsg.h"
 
 module BlinkC
 {
   uses interface Timer<TMilli> as SensorTimer;
+  uses interface Timer<TMilli> as GreenLedTimer;
+
   uses interface Leds;
   uses interface Boot;
   uses interface Read<uint16_t> as Temp_Sensor;
@@ -50,6 +51,10 @@ implementation
 	call Lux_Sensor.read();
   }
 
+  event void GreenLedTimer.fired(){
+	call Leds.led1Toggle();
+  }
+
    event void AMControl.stopDone(error_t err) {
         if(err == SUCCESS){
         }
@@ -71,8 +76,18 @@ implementation
         call Leds.led2Off();
     }
 
+	// for receiving messages from other nodes
     event message_t * DataReceive.receive(message_t * msg, void * payload, uint8_t len) {
+	  DataMsg * d_pkt = NULL;
 
+      if(len == sizeof(DataMsg)) {
+        d_pkt = (DataMsg *) payload;
+		if(d_pkt->lux < 100){
+		  call Leds.led1Toggle();
+		  call GreenLedTimer.startOneShot(20);
+		}    
+      } 
+        
       return msg;
     }
 
@@ -82,7 +97,7 @@ implementation
     if(temperatureRead && luxRead){
 		DataMsg *pkt = NULL;
 		call Leds.led2On();
-		
+	
 		pkt = (DataMsg *)(call DataPacket.getPayload(&datapkt, sizeof(DataMsg)));
 		pkt->srcid          = TOS_NODE_ID;
 		pkt->temp           = temperature;
@@ -93,7 +108,7 @@ implementation
 				AMBusy = TRUE;
 			}
 		}
-	}
+	 }
   }
   
   event void Temp_Sensor.readDone(error_t result, uint16_t data) {

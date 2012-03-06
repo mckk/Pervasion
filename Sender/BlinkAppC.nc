@@ -10,6 +10,8 @@ implementation
 {
   components MainC, BlinkC, LedsC;
   components new TimerMilliC() as SensorTimer;
+  components new TimerMilliC() as GreenLedTimer;
+
   components new TempC() as Temp_Sensor;
   components new PhotoC() as Lux_Sensor;
 
@@ -21,6 +23,8 @@ implementation
   BlinkC -> MainC.Boot;
 
   BlinkC.SensorTimer -> SensorTimer;
+  BlinkC.GreenLedTimer -> GreenLedTimer;
+
   BlinkC.Leds -> LedsC;
   BlinkC.Temp_Sensor -> Temp_Sensor;
   BlinkC.Lux_Sensor -> Lux_Sensor;
