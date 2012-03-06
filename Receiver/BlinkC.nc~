@@ -1,0 +1,197 @@
+//## Solution code for tutorial 3: (Receiver Node code) of the wireless sensor network
+//## programing module of the pervasive systems course.
+
+#include "Timer.h"
+#include "DataMsg.h"
+#include "SerialMsg.h"
+
+module BlinkC
+{
+  uses interface Timer<TMilli> as SensorTimer;
+  uses interface Leds;
+  uses interface Boot;
+  uses interface Read<uint16_t> as Temp_Sensor;
+
+  ///* Solution 2, implement the Radio stack.
+  uses interface SplitControl as AMControl;
+  uses interface Packet as DataPacket;
+  uses interface AMSend as DataSend;
+  uses interface Receive as DataReceive;
+
+  ///* Solution 3, implement the Serial stack.
+  uses interface SplitControl as SerialAMControl;
+  uses interface Packet as SerialPacket;
+  uses interface AMSend as SerialSend;
+  uses interface Receive as SerialReceive;
+  
+  ///* Tutorial 3,  interface to get the RSSI
+  uses interface CC2420Packet;
+  uses interface Timer<TMilli> as RssiTimer;
+  
+}
+implementation
+{
+
+  enum{
+    SAMPLE_PERIOD = 256,
+    };
+
+  uint16_t temperature_value;
+  ///* Solution 2, implement radio stack.  
+  message_t datapkt;
+  bool AMBusy;
+  
+  ///* Solution 3, implement serial stack.
+  message_t serialpkt;
+  bool SerialAMBusy;
+  
+  ///* Tutorial 3, declarations and functions for RSSI reading and displaying on Leds
+  int8_t getRssi(message_t *m);  
+  message_t rssiMsg; 
+  int8_t rssi;
+   
+   int8_t getRssi(message_t *msg) {
+        return  call CC2420Packet.getRssi(msg);
+     }
+     
+      event void RssiTimer.fired() {
+
+        rssi =  rssi - 45;
+	if (rssi <= -90){
+		call Leds.led1Off();
+		call Leds.led2Off();
+		call Leds.led0On();
+	} else if (rssi <= -75  && rssi > -90) {
+		call Leds.led0Off();
+		call Leds.led2Off();
+		call Leds.led1On();
+	} else if (rssi <= -65 && rssi > -75) {
+		call Leds.led0Off();
+		call Leds.led1Off();
+		call Leds.led2On();
+	} else {
+		call Leds.led0On();
+		call Leds.led1On();
+		call Leds.led2On();
+}
+
+  }
+
+ ///*End*************************************/ 
+
+  event void Boot.booted()
+  {
+    temperature_value = 0;
+    call SensorTimer.startPeriodic(SAMPLE_PERIOD );
+    ///* Solution 2. start radio stack.
+    call AMControl.start();
+    ///* Solution 3. start serial stack.
+    call SerialAMControl.start();
+
+
+  }
+
+  event void SensorTimer.fired()
+  {
+       call Temp_Sensor.read();
+  }
+
+
+///***** Solution 2. implement radio stack ***********************************/
+
+   event void AMControl.stopDone(error_t err) {
+        if(err == SUCCESS){
+        }
+    }
+    
+    event void AMControl.startDone(error_t err) {
+        if (err == SUCCESS) {
+            AMBusy    = FALSE;
+        }
+    } 
+
+    event void DataSend.sendDone(message_t * msg, error_t error) {
+        if (&datapkt == msg) {
+            AMBusy = FALSE;
+        }
+        
+    }
+
+    event message_t * DataReceive.receive(message_t * msg, void * payload, uint8_t len) {
+    
+      SerialMsg * s_pkt = NULL;
+      DataMsg * d_pkt = NULL; 
+      ///*Tutorial 3, RSSI Value of the received message***************************/
+      rssi = getRssi(msg);
+      call RssiTimer.startOneShot(256);
+        
+      ///* Solution 3. implement serial stack.************************************/
+       if(len == sizeof(DataMsg)) {
+        d_pkt = (DataMsg *) payload;      
+      }       
+      
+      s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
+        
+      s_pkt->header      = SERIALMSG_HEADER;
+      s_pkt->srcid       = TOS_NODE_ID;
+      s_pkt->temperature   = d_pkt->temp;
+      s_pkt->RSSI = rssi; //Remember to assign this RSSI value to message going to serial port.
+      
+      if(SerialAMBusy) {      
+      }
+      else {
+        if (call SerialSend.send(AM_BROADCAST_ADDR, &serialpkt, sizeof(SerialMsg)) == SUCCESS) {
+            SerialAMBusy = TRUE;
+        }
+      } 
+        
+      return msg;
+    }
+
+  ///*** END Solution 2. *********************************/
+
+  ///********** Solution 3. implement serial stack. ******/
+
+    event void SerialAMControl.stopDone(error_t err) {
+        if(err == SUCCESS){
+        }
+    }
+    
+    event void SerialAMControl.startDone(error_t err) {
+        if (err == SUCCESS) {
+            SerialAMBusy    = FALSE;
+        }
+    } 
+    event void SerialSend.sendDone(message_t *msg, error_t error) {
+        SerialAMBusy = FALSE;
+   
+    }
+
+    event message_t * SerialReceive.receive(message_t * msg, void * payload, uint8_t len) {
+        return msg; 
+    }
+
+
+ ///*** END Solution 3. **********************************/
+
+  ///******** Sensor Reading code ************************/
+  event void Temp_Sensor.readDone(error_t result, uint16_t data) {
+  ///***** Solution 4. Send data to the Receiver********/ 
+  
+  ///*This code is commented because it is not used by receiver node in Tutorial 3***/
+//     DataMsg * pkt = (DataMsg *)(call DataPacket.getPayload(&datapkt, sizeof(DataMsg)));
+//     pkt->srcid          = TOS_NODE_ID;
+//     pkt->sync_p         = 255;
+//     pkt->temp           = data;
+//     pkt->avg_temp       = 255;
+// 
+//     if (AMBusy) {
+//     }
+//     else {
+//         if (call DataSend.send(0, &datapkt, sizeof(DataMsg)) == SUCCESS) {
+//             AMBusy = TRUE;
+//         }
+//     } 
+  }
+}
+
