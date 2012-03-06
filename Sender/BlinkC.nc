@@ -125,12 +125,26 @@ implementation
 		}
 	}
   }
+
+  // Checks for fire condition, if the fire is detected, flashes red 
+  // light and sends alert message to the remote mote
+  task void checkForFire() {
+  	
+    // TODO how to measure the increase in temperature
+  }
   
   event void Temp_Sensor.readDone(error_t result, uint16_t data) {
     if(result == SUCCESS){
     	temperature = data;
 		temperatureRead = TRUE;
 		post sendData();
+
+		// write the temperature to the log
+		tempLog[curLogIndex] = temperature;
+        curLogIndex = curLogIndex + 1;
+
+        // post task to check for fire
+		post checkForFire();
     } 
   }
 
