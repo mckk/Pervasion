@@ -33,10 +33,22 @@ implementation
   bool temperatureRead;
   bool luxRead;
 
+  uint16_t tempLog[30];
+  uint16_t curLogIndex;
+
+  uint16_t neighboursLux[2];
+  uint8_t luxIndex;
+  
+  // stores the id of the last neighbour who was communicating wih us;
+  uint8_t lastNeighbourId; 
+
+
   event void Boot.booted()
   {
     temperature = 0;
     lux = 0;
+    curLogIndex = 0;
+    luxIndex = 0;
     temperatureRead = FALSE;
     luxRead = FALSE;
     call SensorTimer.startPeriodic(SAMPLE_PERIOD );
@@ -83,7 +95,12 @@ implementation
 		if(d_pkt->lux < 100){
 		  call Leds.led1Toggle();
 		  call GreenLedTimer.startOneShot(20);
-		}    
+		} 
+
+		// write the received lux reading to the buffer
+        lastNeighbourId = d_pkt->srcid;
+		neighboursLux[luxIndex] = d_pkt->lux;
+        luxIndex = 1 - luxIndex;  
       } 
         
       return msg;
@@ -99,14 +116,14 @@ implementation
 		pkt = (DataMsg *)(call DataPacket.getPayload(&datapkt, sizeof(DataMsg)));
 		pkt->srcid          = TOS_NODE_ID;
 		pkt->temp           = temperature;
-		pkt->lux			= lux;
+		pkt->lux	      = lux;
 
 		if(!AMBusy){
 			if(call DataSend.send(AM_BROADCAST_ADDR, &datapkt, sizeof(DataMsg)) == SUCCESS){
 				AMBusy = TRUE;
 			}
 		}
-	 }
+	}
   }
   
   event void Temp_Sensor.readDone(error_t result, uint16_t data) {
