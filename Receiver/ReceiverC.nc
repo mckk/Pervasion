@@ -5,7 +5,7 @@
 #include "DataMsg.h"
 #include "SerialMsg.h"
 
-module BlinkC
+module ReceiverC
 {
   uses interface Leds;
   uses interface Boot;

@@ -1,3 +1,3 @@
-COMPONENT=BlinkAppC
+COMPONENT=ReceiverAppC
 SENSORBOARD=mda100
 include $(MAKERULES)
