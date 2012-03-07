@@ -62,6 +62,7 @@ implementation
     lux = 0;
     curLogIndex = 0;
     luxIndex = 0;
+    lastNeighbourId = 0;
     temperatureRead = FALSE;
     luxRead = FALSE;
     bufferFull = FALSE;
@@ -128,7 +129,7 @@ implementation
 		// write the received lux reading to the buffer
         if (lastNeighbourId != d_pkt->srcid) {
 			lastNeighbourId = d_pkt->srcid;
-			luxIndex = 1 - luxIndex;  
+			luxIndex = 1 - luxIndex; 
 		}
 		neighboursLux[luxIndex] = d_pkt->lux < 100;
       } 
@@ -167,67 +168,57 @@ implementation
 	int avgOne = 0;
 	int avgTwo = 0;
 	int splitIndex;
-	bool isDark = TRUE;
+	bool areNeighboursDark = TRUE;
 	FireMsg *pkt = NULL;
 
     // The first condition is that all nodes detect that it is currently dark
-    if (lux < 100) {
-		// Check for neighbours 
-		for ( ; index < NEIGHBOURS_NUMBER; index++) {
-			// if the reading actually occured
-			isDark = isDark && neighboursLux[index];
+	// Check that all neighbours are dark 
+	for ( ; index < NEIGHBOURS_NUMBER; index++) {
+		// if the reading actually occured
+		areNeighboursDark = areNeighboursDark && neighboursLux[index];
+	}
+
+	if (areNeighboursDark && lux < 100) {
+		// all nodes are in the dark
+		// The second condition is to check whether there is an increase in temperature
+	
+		// Split the buffer into two arrays
+		splitIndex = (curLogIndex + LOG_SIZE/2) % LOG_SIZE; 
+	
+		// Compute average of each array
+		index = curLogIndex;
+
+		sumOne = 0;
+		for ( ; index != splitIndex ; ) {
+			sumOne = sumOne + tempLog[index];
+			index = (index + 1) % LOG_SIZE;
 		}
-	}
-
-	if (!isDark) {
-		// not dark, terminate task
-		return;
-	}
-
-	// The second condition is to check whether there is an increase in temperature
 	
-	// Split the buffer into two arrays
-	splitIndex = (curLogIndex + LOG_SIZE/2) % LOG_SIZE; 
+		sumTwo = 0;
+		for ( ; index != curLogIndex ; ) {
+			sumTwo = sumTwo + tempLog[index];
+			index = (index + 1) % LOG_SIZE;
+		}
+
+		avgOne = sumOne/(LOG_SIZE/2);
+		avgTwo = sumTwo/(LOG_SIZE/2);
+
+		if (avgOne + 20 < avgTwo) {
+			// we have fire
+			// turn on red led
+			call Leds.led0On();
 	
-	// Compute average of each array
-	index = curLogIndex;
+			// send the fire message
+			pkt = (FireMsg *)(call DataPacket.getPayload(&datapkt, sizeof(FireMsg)));
+			pkt->srcid = TOS_NODE_ID;
 
-	sumOne = 0;
-	for ( ; index != splitIndex ; ) {
-		sumOne = sumOne + tempLog[index];
-		index = (index + 1) % LOG_SIZE;
-	}
-	
-	sumTwo = 0;
-	for ( ; index != curLogIndex ; ) {
-		sumTwo = sumTwo + tempLog[index];
-		index = (index + 1) % LOG_SIZE;
-	}
-
-	avgOne = sumOne/(LOG_SIZE/2);
-	avgTwo = sumTwo/(LOG_SIZE/2);
-
-	if (avgOne + 20 < avgTwo) {
-		// we have fire
-		// turn on red led
-		call Leds.led0On();
-	
-		// send the fire message
-		pkt = (FireMsg *)(call DataPacket.getPayload(&datapkt, sizeof(FireMsg)));
-		pkt->srcid = TOS_NODE_ID;
-
-		if(!AMBusy){
-			if(call FireMsgSend.send(BASE_ADDR, &datapkt, sizeof(FireMsg)) == SUCCESS){
-				AMBusy = TRUE;
+			if(!AMBusy){
+				if(call FireMsgSend.send(BASE_ADDR, &datapkt, sizeof(FireMsg)) == SUCCESS){
+					AMBusy = TRUE;
+				}
 			}
 		}
 	}
-	
-	else {
-		// There is no fire, turn the red led off;
-		call Leds.led0Off();
-	}
-
   }
   
   event void Temp_Sensor.readDone(error_t result, uint16_t data) {
@@ -240,7 +231,7 @@ implementation
 		tempLog[curLogIndex] = temperature;
 		
 		// check if the buffer is full
-		if (curLogIndex == LOG_SIZE) {
+		if (curLogIndex == LOG_SIZE - 1) {
 			bufferFull = TRUE;
 		}
         curLogIndex = (curLogIndex + 1) % LOG_SIZE;
