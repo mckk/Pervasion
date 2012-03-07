@@ -22,6 +22,8 @@ implementation
 
   const uint16_t SAMPLE_PERIOD = 1000;
   const uint8_t NEIGHBOURS_NUMBER = 2;
+  const uint8_t LOG_SIZE = 30;
+  const uint16_t INIT_VAL = 65535; 
 
   uint16_t temperature;
   uint16_t lux;
@@ -48,12 +50,23 @@ implementation
 
   event void Boot.booted()
   {
+	int i;
+
+	// initialize all variables
     temperature = 0;
     lux = 0;
     curLogIndex = 0;
     luxIndex = 0;
     temperatureRead = FALSE;
     luxRead = FALSE;
+
+	for (i = 0 ; i < LOG_SIZE ; i++) {
+		tempLog[i] = INIT_VAL;
+	}
+    for (i = 0 ; i < NEIGHBOURS_NUMBER ; i++) {
+		neighboursLux[i] = INIT_VAL;
+	}
+
     call SensorTimer.startPeriodic(SAMPLE_PERIOD );
     call AMControl.start();
   }
@@ -134,14 +147,20 @@ implementation
   // Checks for fire condition, if the fire is detected, flashes red 
   // light and sends alert message to the remote mote
   task void checkForFire() {
-  	
-    // The first condition is that all nodes detect that it is currently dark
+
 	bool isDark = 1;
-    if (isDark) {
+	int i = 0;
+
+	call Leds.led0Off();
+
+    // The first condition is that all nodes detect that it is currently dark
+    if (lux < 100) {
 		// Check for neighbours 
-		int i = 0;
 		for ( ; i < NEIGHBOURS_NUMBER; i++) {
-			isDark = isDark && (neighboursLux[i] < 100); 
+ 			if (neighboursLux[i] != INIT_VAL) {
+				// if the reading actually occured
+				isDark = isDark && (neighboursLux[i] < 100);
+			} 
 		}
 	}
 
@@ -160,7 +179,7 @@ implementation
 
 		// write the temperature to the log
 		tempLog[curLogIndex] = temperature;
-        curLogIndex = curLogIndex + 1;
+        curLogIndex = (curLogIndex + 1) % LOG_SIZE;
 
         // post task to check for fire
 		post checkForFire();
