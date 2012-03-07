@@ -39,6 +39,7 @@ implementation
   // Used to store the last temperature readings
   uint16_t tempLog[30];
   uint16_t curLogIndex;
+  bool bufferFull;
 
   // used to store the lighting readings of neighbouring nodes
   uint16_t neighboursLux[2];
@@ -59,9 +60,10 @@ implementation
     luxIndex = 0;
     temperatureRead = FALSE;
     luxRead = FALSE;
+    bufferFull = FALSE;
 
 	for (i = 0 ; i < LOG_SIZE ; i++) {
-		tempLog[i] = INIT_VAL;
+		tempLog[i] = 0;
 	}
     for (i = 0 ; i < NEIGHBOURS_NUMBER ; i++) {
 		neighboursLux[i] = INIT_VAL;
@@ -148,8 +150,9 @@ implementation
   // light and sends alert message to the remote mote
   task void checkForFire() {
 
-	bool isDark = 1;
+	bool isDark = TRUE;
 	int i = 0;
+	int splitSindex;
 
 	call Leds.led0Off();
 
@@ -164,10 +167,14 @@ implementation
 		}
 	}
 
-	if (isDark) {
-		// Flash red light
-		call Leds.led0On();
+	if (!isDark) {
+		return;
 	}
+
+	// The second condition is to check whether there is an increase in temperature
+	
+	// Split the buffer into two arrays
+	splitIndex = (curLogIndex + LOG_SIZE/2) % LOG_SIZE; 
 
   }
   
@@ -179,10 +186,17 @@ implementation
 
 		// write the temperature to the log
 		tempLog[curLogIndex] = temperature;
+		
+		// check if the buffer is full
+		if (curLogIndex == LOG_SIZE) {
+			bufferFull = TRUE;
+		}
         curLogIndex = (curLogIndex + 1) % LOG_SIZE;
 
         // post task to check for fire
-		post checkForFire();
+		if (bufferFull) {
+			post checkForFire();
+		}
     } 
   }
 
