@@ -2,8 +2,8 @@
 #define FIREMSG_H
 
 enum {
-	AM_DATAMSG		= 10,
-    DATAMSG_HEADER  = 0x99,
+	AM_FIREMSG		= 10,
+    FIREMSG_HEADER  = 0x99,
 };
 
 typedef nx_struct FireMsg {
