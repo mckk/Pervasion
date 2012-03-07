@@ -29,11 +29,12 @@ implementation
 	BASE_ADDR = 0x22, // the address of base station
   };
 
+  // used to store sensor's readings
   uint16_t temperature;
   uint16_t lux;
 
+  // used for messaging
   message_t datapkt;
-
   bool AMBusy;
 
   // Used to check when both checks are done
@@ -67,6 +68,7 @@ implementation
     luxRead = FALSE;
     bufferFull = FALSE;
 
+    // initialize the values of all arrays
 	for (i = 0 ; i < LOG_SIZE ; i++) {
 		tempLog[i] = 0;
 	}
@@ -131,6 +133,8 @@ implementation
 			lastNeighbourId = d_pkt->srcid;
 			luxIndex = 1 - luxIndex; 
 		}
+
+		// falg whether any neighbour indicates dark
 		neighboursLux[luxIndex] = d_pkt->lux < 100;
       } 
         
@@ -230,7 +234,8 @@ implementation
 		// write the temperature to the log
 		tempLog[curLogIndex] = temperature;
 		
-		// check if the buffer is full
+		// check if we already had LOG_SIZE readings of temperature
+		// if not, we do not want to check for fire
 		if (curLogIndex == LOG_SIZE - 1) {
 			bufferFull = TRUE;
 		}
