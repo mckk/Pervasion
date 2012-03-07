@@ -20,9 +20,11 @@ module SenderC
 implementation
 {
 
-  const uint16_t SAMPLE_PERIOD = 1000;
-  const uint8_t NEIGHBOURS_NUMBER = 2;
-  const uint8_t LOG_SIZE = 30;
+  enum {
+  	SAMPLE_PERIOD = 1000,
+    NEIGHBOURS_NUMBER = 2,
+    LOG_SIZE = 30,  // log size should be even
+  };
 
   uint16_t temperature;
   uint16_t lux;
@@ -36,12 +38,12 @@ implementation
   bool luxRead;
 
   // Used to store the last temperature readings
-  uint16_t tempLog[30];
+  uint16_t tempLog[LOG_SIZE];
   uint16_t curLogIndex;
   bool bufferFull;
 
   // used to store the lighting readings of neighbouring nodes
-  bool neighboursLux[2];
+  bool neighboursLux[NEIGHBOURS_NUMBER];
   uint8_t luxIndex;
   
   // stores the id of the last neighbour who was communicating wih us;
@@ -151,9 +153,11 @@ implementation
 
 	// Declare all vars
 	int index = 0;
-	uint16_t minElement;
-	uint16_t maxElement;
-	uint16_t curElem;
+	int sumOne = 0;
+	int sumTwo = 0;
+	int avgOne = 0;
+	int avgTwo = 0;
+	int splitIndex;
 	bool isDark = TRUE;
 
     // The first condition is that all nodes detect that it is currently dark
@@ -170,55 +174,34 @@ implementation
 		return;
 	}
 
-	// The second condition is to check whether there was a sudden increase in temperature
-	index = curLogIndex;
-	minElement = tempLog[index];
-	maxElement = tempLog[index];
-	index = (index + 1) % LOG_SIZE;
-	
-	// Find minimal and maximal element
-	for ( ; index != curLogIndex ; ) {
-		curElem = tempLog[index];
-		if (curElem < minElement) {
-			minElement = curElem;
-		}
-		if (curElem > maxElement) {
-			maxElement = curElem;
-		}
-		
-		index = (index + 1) % LOG_SIZE;
-	}	
-
-	// If there is a difference of more than 20, indicate fire
-	if (minElement + 20 < maxElement) {
-		// Indicate fire
-	} 
-
-	/*
 	// The second condition is to check whether there is an increase in temperature
 	
 	// Split the buffer into two arrays
-	int splitIndex = (curLogIndex + LOG_SIZE/2) % LOG_SIZE; 
+	splitIndex = (curLogIndex + LOG_SIZE/2) % LOG_SIZE; 
 	
 	// Compute average of each array
-	int index = curLogIndex;
+	index = curLogIndex;
 
-	int sumOne = 0;
+	sumOne = 0;
 	for ( ; index != splitIndex ; ) {
 		sumOne = sumOne + tempLog[index];
-		index = (index ++) % LOG_SIZE;
+		index = (index + 1) % LOG_SIZE;
 	}
 	
-	int sumTwo = 0;
+	sumTwo = 0;
 	for ( ; index != curLogIndex ; ) {
 		sumTwo = sumTwo + tempLog[index];
-		index = (index ++) % LOG_SIZE;
+		index = (index + 1) % LOG_SIZE;
 	}
 
-	int avgOne = sumOne/(LOG_SIZE/2);
-	int avgTwo = sumTwo/(LOG_SIZE/2);
+	avgOne = sumOne/(LOG_SIZE/2);
+	avgTwo = sumTwo/(LOG_SIZE/2);
 
-	*/
+	if (avgOne + 20 < avgTwo) {
+		// we have fire
+		
+	}
+
   }
   
   event void Temp_Sensor.readDone(error_t result, uint16_t data) {
