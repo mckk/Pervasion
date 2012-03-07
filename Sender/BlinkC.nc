@@ -20,7 +20,8 @@ module BlinkC
 implementation
 {
 
-  uint16_t SAMPLE_PERIOD = 1000;
+  const uint16_t SAMPLE_PERIOD = 1000;
+  const uint8_t NEIGHBOURS_NUMBER = 2;
 
   uint16_t temperature;
   uint16_t lux;
@@ -33,9 +34,11 @@ implementation
   bool temperatureRead;
   bool luxRead;
 
+  // Used to store the last temperature readings
   uint16_t tempLog[30];
   uint16_t curLogIndex;
 
+  // used to store the lighting readings of neighbouring nodes
   uint16_t neighboursLux[2];
   uint8_t luxIndex;
   
@@ -98,9 +101,11 @@ implementation
 		} 
 
 		// write the received lux reading to the buffer
-        lastNeighbourId = d_pkt->srcid;
+        if (lastNeighbourId != d_pkt->srcid) {
+			lastNeighbourId = d_pkt->srcid;
+			luxIndex = 1 - luxIndex;  
+		}
 		neighboursLux[luxIndex] = d_pkt->lux;
-        luxIndex = 1 - luxIndex;  
       } 
         
       return msg;
@@ -116,7 +121,7 @@ implementation
 		pkt = (DataMsg *)(call DataPacket.getPayload(&datapkt, sizeof(DataMsg)));
 		pkt->srcid          = TOS_NODE_ID;
 		pkt->temp           = temperature;
-		pkt->lux	      = lux;
+		pkt->lux	        = lux;
 
 		if(!AMBusy){
 			if(call DataSend.send(AM_BROADCAST_ADDR, &datapkt, sizeof(DataMsg)) == SUCCESS){
@@ -130,7 +135,21 @@ implementation
   // light and sends alert message to the remote mote
   task void checkForFire() {
   	
-    // TODO how to measure the increase in temperature
+    // The first condition is that all nodes detect that it is currently dark
+	bool isDark = 1;
+    if (isDark) {
+		// Check for neighbours 
+		int i = 0;
+		for ( ; i < NEIGHBOURS_NUMBER; i++) {
+			isDark = isDark && (neighboursLux[i] < 100); 
+		}
+	}
+
+	if (isDark) {
+		// Flash red light
+		call Leds.led0On();
+	}
+
   }
   
   event void Temp_Sensor.readDone(error_t result, uint16_t data) {
