@@ -1,7 +1,7 @@
 #include "Timer.h"
 #include "DataMsg.h"
 
-module BlinkC
+module SenderC
 {
   uses interface Timer<TMilli> as SensorTimer;
   uses interface Timer<TMilli> as GreenLedTimer;
