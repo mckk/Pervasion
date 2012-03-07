@@ -23,7 +23,6 @@ implementation
   const uint16_t SAMPLE_PERIOD = 1000;
   const uint8_t NEIGHBOURS_NUMBER = 2;
   const uint8_t LOG_SIZE = 30;
-  const uint16_t INIT_VAL = 65535; 
 
   uint16_t temperature;
   uint16_t lux;
@@ -42,7 +41,7 @@ implementation
   bool bufferFull;
 
   // used to store the lighting readings of neighbouring nodes
-  uint16_t neighboursLux[2];
+  bool neighboursLux[2];
   uint8_t luxIndex;
   
   // stores the id of the last neighbour who was communicating wih us;
@@ -66,7 +65,7 @@ implementation
 		tempLog[i] = 0;
 	}
     for (i = 0 ; i < NEIGHBOURS_NUMBER ; i++) {
-		neighboursLux[i] = INIT_VAL;
+		neighboursLux[i] = FALSE;
 	}
 
     call SensorTimer.startPeriodic(SAMPLE_PERIOD );
@@ -120,7 +119,7 @@ implementation
 			lastNeighbourId = d_pkt->srcid;
 			luxIndex = 1 - luxIndex;  
 		}
-		neighboursLux[luxIndex] = d_pkt->lux;
+		neighboursLux[luxIndex] = d_pkt->lux < 100;
       } 
         
       return msg;
@@ -150,32 +149,76 @@ implementation
   // light and sends alert message to the remote mote
   task void checkForFire() {
 
+	// Declare all vars
+	int index = 0;
+	uint16_t minElement;
+	uint16_t maxElement;
+	uint16_t curElem;
 	bool isDark = TRUE;
-	int i = 0;
-	int splitSindex;
-
-	call Leds.led0Off();
 
     // The first condition is that all nodes detect that it is currently dark
     if (lux < 100) {
 		// Check for neighbours 
-		for ( ; i < NEIGHBOURS_NUMBER; i++) {
- 			if (neighboursLux[i] != INIT_VAL) {
-				// if the reading actually occured
-				isDark = isDark && (neighboursLux[i] < 100);
-			} 
+		for ( ; index < NEIGHBOURS_NUMBER; index++) {
+			// if the reading actually occured
+			isDark = isDark && neighboursLux[index];
 		}
 	}
 
 	if (!isDark) {
+		// not dark, terminate task
 		return;
 	}
 
+	// The second condition is to check whether there was a sudden increase in temperature
+	index = curLogIndex;
+	minElement = tempLog[index];
+	maxElement = tempLog[index];
+	index = (index + 1) % LOG_SIZE;
+	
+	// Find minimal and maximal element
+	for ( ; index != curLogIndex ; ) {
+		curElem = tempLog[index];
+		if (curElem < minElement) {
+			minElement = curElem;
+		}
+		if (curElem > maxElement) {
+			maxElement = curElem;
+		}
+		
+		index = (index + 1) % LOG_SIZE;
+	}	
+
+	// If there is a difference of more than 20, indicate fire
+	if (minElement + 20 < maxElement) {
+		// Indicate fire
+	} 
+
+	/*
 	// The second condition is to check whether there is an increase in temperature
 	
 	// Split the buffer into two arrays
-	splitIndex = (curLogIndex + LOG_SIZE/2) % LOG_SIZE; 
+	int splitIndex = (curLogIndex + LOG_SIZE/2) % LOG_SIZE; 
+	
+	// Compute average of each array
+	int index = curLogIndex;
 
+	int sumOne = 0;
+	for ( ; index != splitIndex ; ) {
+		sumOne = sumOne + tempLog[index];
+		index = (index ++) % LOG_SIZE;
+	}
+	
+	int sumTwo = 0;
+	for ( ; index != curLogIndex ; ) {
+		sumTwo = sumTwo + tempLog[index];
+		index = (index ++) % LOG_SIZE;
+	}
+
+	int avgOne = sumOne/(LOG_SIZE/2);
+	int avgTwo = sumTwo/(LOG_SIZE/2);
+
+	*/
   }
   
   event void Temp_Sensor.readDone(error_t result, uint16_t data) {
