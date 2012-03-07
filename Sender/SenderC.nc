@@ -1,5 +1,6 @@
 #include "Timer.h"
 #include "DataMsg.h"
+#include "FireMsg.h"
 
 module SenderC
 {
@@ -14,6 +15,7 @@ module SenderC
   uses interface SplitControl as AMControl;
   uses interface Packet as DataPacket;
   uses interface AMSend as DataSend;
+  uses interface AMSend as FireMsgSend;
   uses interface Receive as DataReceive;
 
 }
@@ -22,8 +24,9 @@ implementation
 
   enum {
   	SAMPLE_PERIOD = 1000,
-    NEIGHBOURS_NUMBER = 2,
+    NEIGHBOURS_NUMBER = 2, // the number of neighbour nodes
     LOG_SIZE = 30,  // log size should be even
+	BASE_ADDR = 0x22, // the address of base station
   };
 
   uint16_t temperature;
@@ -105,6 +108,12 @@ implementation
         call Leds.led2Off();
     }
 
+	event void FireMsgSend.sendDone(message_t * msg, error_t error) {
+        if (&datapkt == msg) {
+            AMBusy = FALSE;
+        }
+	}
+
 	// for receiving messages from other nodes
     event message_t * DataReceive.receive(message_t * msg, void * payload, uint8_t len) {
 	  DataMsg * d_pkt = NULL;
@@ -159,6 +168,7 @@ implementation
 	int avgTwo = 0;
 	int splitIndex;
 	bool isDark = TRUE;
+	FireMsg *pkt = NULL;
 
     // The first condition is that all nodes detect that it is currently dark
     if (lux < 100) {
@@ -199,7 +209,23 @@ implementation
 
 	if (avgOne + 20 < avgTwo) {
 		// we have fire
-		
+		// turn on red led
+		call Leds.led0On();
+	
+		// send the fire message
+		pkt = (FireMsg *)(call DataPacket.getPayload(&datapkt, sizeof(FireMsg)));
+		pkt->srcid = TOS_NODE_ID;
+
+		if(!AMBusy){
+			if(call FireMsgSend.send(BASE_ADDR, &datapkt, sizeof(FireMsg)) == SUCCESS){
+				AMBusy = TRUE;
+			}
+		}
+	}
+	
+	else {
+		// There is no fire, turn the red led off;
+		call Leds.led0Off();
 	}
 
   }

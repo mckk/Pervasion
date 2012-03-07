@@ -15,6 +15,7 @@ implementation
   components ActiveMessageC;
 
   components new AMSenderC(AM_DATAMSG) as DataSender;
+  components new AMSenderC(AM_FIREMSG) as FireMsgSender;
   components new AMReceiverC(AM_DATAMSG) as DataReceiver;
 
   SenderC -> MainC.Boot;
@@ -29,6 +30,7 @@ implementation
   SenderC.AMControl -> ActiveMessageC;
   SenderC.DataPacket -> DataSender;
   SenderC.DataSend -> DataSender;
+  SenderC.FireMsgSend -> FireMsgSender;
   SenderC.DataReceive -> DataReceiver;
 }
 
