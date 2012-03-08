@@ -40,13 +40,7 @@ public class RESTClient
 		energyEventClientResource = new ClientResource(energyEventURL);
 		
 	}
-	
-	public static void main(String[] args) {
-		RESTClient client = new RESTClient();
-		client.postDataSamples();
-	}
-	
-	
+
 	private JSONObject preparePreamble() {
     	JSONObject preamble = new JSONObject();
     	try {
