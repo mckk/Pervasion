@@ -75,6 +75,7 @@ implementation
       s_pkt->srcid       = d_pkt->srcid;
       s_pkt->temperature = d_pkt->temp;
       s_pkt->lux         = d_pkt->lux;
+	  s_pkt->fire 		 = FALSE;
             
       if (!SerialAMBusy && (call SerialSend.send(AM_BROADCAST_ADDR, &serialpkt, sizeof(SerialMsg)) == SUCCESS)) {
       	SerialAMBusy = TRUE;
@@ -97,6 +98,7 @@ implementation
         
      	s_pkt->header      = SERIALMSG_HEADER;
       	s_pkt->srcid       = fire_pkt->srcid;
+		s_pkt->fire 	   = TRUE; 
      	s_pkt->temperature = 0;
       	s_pkt->lux         = 0;
 

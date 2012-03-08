@@ -12,6 +12,7 @@ typedef nx_struct SerialMsg {
     nx_uint16_t srcid;
     nx_int16_t  temperature;
     nx_int16_t  lux;
+    nx_bool fire;
 } SerialMsg;
 #endif
 

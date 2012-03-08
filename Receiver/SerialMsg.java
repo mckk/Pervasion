@@ -7,12 +7,12 @@
 public class SerialMsg extends net.tinyos.message.Message {
 
     /** The default size of this message type in bytes. */
-    public static final int DEFAULT_MESSAGE_SIZE = 7;
+    public static final int DEFAULT_MESSAGE_SIZE = 8;
 
     /** The Active Message type associated with this message. */
     public static final int AM_TYPE = 11;
 
-    /** Create a new SerialMsg of size 7. */
+    /** Create a new SerialMsg of size 8. */
     public SerialMsg() {
         super(DEFAULT_MESSAGE_SIZE);
         amTypeSet(AM_TYPE);
@@ -95,6 +95,9 @@ public class SerialMsg extends net.tinyos.message.Message {
       } catch (ArrayIndexOutOfBoundsException aioobe) { /* Skip field */ }
       try {
         s += "  [lux=0x"+Long.toHexString(get_lux())+"]\n";
+      } catch (ArrayIndexOutOfBoundsException aioobe) { /* Skip field */ }
+      try {
+        s += "  [fire=0x"+Long.toHexString(get_fire())+"]\n";
       } catch (ArrayIndexOutOfBoundsException aioobe) { /* Skip field */ }
       return s;
     }
@@ -351,6 +354,69 @@ public class SerialMsg extends net.tinyos.message.Message {
      */
     public static int sizeBits_lux() {
         return 16;
+    }
+
+    /////////////////////////////////////////////////////////
+    // Accessor methods for field: fire
+    //   Field type: byte, signed
+    //   Offset (bits): 56
+    //   Size (bits): 8
+    /////////////////////////////////////////////////////////
+
+    /**
+     * Return whether the field 'fire' is signed (true).
+     */
+    public static boolean isSigned_fire() {
+        return true;
+    }
+
+    /**
+     * Return whether the field 'fire' is an array (false).
+     */
+    public static boolean isArray_fire() {
+        return false;
+    }
+
+    /**
+     * Return the offset (in bytes) of the field 'fire'
+     */
+    public static int offset_fire() {
+        return (56 / 8);
+    }
+
+    /**
+     * Return the offset (in bits) of the field 'fire'
+     */
+    public static int offsetBits_fire() {
+        return 56;
+    }
+
+    /**
+     * Return the value (as a byte) of the field 'fire'
+     */
+    public byte get_fire() {
+        return (byte)getSIntBEElement(offsetBits_fire(), 8);
+    }
+
+    /**
+     * Set the value of the field 'fire'
+     */
+    public void set_fire(byte value) {
+        setSIntBEElement(offsetBits_fire(), 8, value);
+    }
+
+    /**
+     * Return the size, in bytes, of the field 'fire'
+     */
+    public static int size_fire() {
+        return (8 / 8);
+    }
+
+    /**
+     * Return the size, in bits, of the field 'fire'
+     */
+    public static int sizeBits_fire() {
+        return 8;
     }
 
 }
