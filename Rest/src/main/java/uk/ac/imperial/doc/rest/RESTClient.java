@@ -1,4 +1,4 @@
-package uk.ac.imperial.doc.resttutorial;
+package uk.ac.imperial.doc.rest;
 
 import java.io.IOException;
 
