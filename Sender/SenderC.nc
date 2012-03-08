@@ -223,6 +223,11 @@ implementation
 			}
 		}
 	}
+
+	else {
+		// fire may be over, ensure that the red ligh is turned off
+		call Leds.led0Off();
+	}
   }
   
   event void Temp_Sensor.readDone(error_t result, uint16_t data) {
