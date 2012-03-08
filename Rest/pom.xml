@@ -68,7 +68,11 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <mainClass>uk.ac.imperial.doc.rest.RESTClient</mainClass>
+                    <mainClass>uk.ac.imperial.doc.rest.MsgReader</mainClass>
+                    <arguments>
+                        <argument>SerialMsg</argument>
+                        <argument>-comm serial@/dev/ttyUSB1:micaz</argument>
+                    </arguments>
                 </configuration>
             </plugin>
         </plugins>

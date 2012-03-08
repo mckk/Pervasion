@@ -1,0 +1,2 @@
+mig java -java-classname=SerialMsg ../Receiver/SerialMsg.h SerialMsg -o SerialMsg.java
+mvn exec:java
