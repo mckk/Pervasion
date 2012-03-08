@@ -2,3 +2,4 @@ Sender/build/*
 Receiver/build/*
 Rest/.*
 Rest/*.iml
+Rest/target
