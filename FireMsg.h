@@ -2,7 +2,7 @@
 #define FIREMSG_H
 
 enum {
-	AM_FIREMSG		= 276,
+	AM_FIREMSG		= 231,
     FIREMSG_HEADER  = 0x99,
 };
 
