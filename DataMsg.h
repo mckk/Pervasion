@@ -2,7 +2,7 @@
 #define DATAMSG_H
 
 enum {
-    AM_DATAMSG      = 9,
+    AM_DATAMSG      = 95,
     DATAMSG_HEADER  = 0x99,
 };
 
