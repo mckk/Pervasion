@@ -53,6 +53,7 @@ import java.util.Vector;
 public class MsgReader implements MessageListener {
 
     private MoteIF moteIF;
+    private RESTClient restClient;
 
     public MsgReader(String source) throws Exception {
         if (source != null) {
@@ -60,6 +61,8 @@ public class MsgReader implements MessageListener {
         } else {
             moteIF = new MoteIF(BuildSource.makePhoenix(PrintStreamMessenger.err));
         }
+
+        restClient = new RESTClient();
     }
 
     public void start() {
@@ -67,10 +70,14 @@ public class MsgReader implements MessageListener {
 
     public void messageReceived(int to, Message message) {
 
-        // TODO
-        // convert message to JSON
-        // Send it to rest client
-        // RESTClient.postDataSamples(message) or smth
+        // create message
+        SerialMsg serialMsg = (SerialMsg) message;
+
+        try {
+            restClient.postDataSamples(serialMsg);
+        } catch (Exception e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
     }
 
 

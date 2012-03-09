@@ -2,16 +2,16 @@ package uk.ac.imperial.doc.rest;
 
 import java.io.IOException;
 
+import net.tinyos.message.Message;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.omg.CORBA.Request;
 import org.restlet.data.MediaType;
-import org.restlet.data.Method;
+import org.restlet.data.Preference;
 import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
 import org.restlet.resource.ClientResource;
-import org.restlet.resource.ResourceException;
 
 
 /**
@@ -38,8 +38,18 @@ public class RESTClient
 		
 		energyDataSampleClientResource = new ClientResource(energyDataURL);
 		energyEventClientResource = new ClientResource(energyEventURL);
-		
+
+        // set the accept header to application/json
+        energyDataSampleClientResource.getClientInfo().getAcceptedMediaTypes().add(new Preference<MediaType>(MediaType.APPLICATION_JSON));
+        energyEventClientResource.getClientInfo().getAcceptedMediaTypes().add(new Preference<MediaType>(MediaType.APPLICATION_JSON));
 	}
+
+//    public static void main(String args[]) throws Exception {
+//
+//        RESTClient client = new RESTClient();
+//        client.postDataSamples(null);
+//
+//    }
 
 	private JSONObject preparePreamble() {
     	JSONObject preamble = new JSONObject();
@@ -55,7 +65,7 @@ public class RESTClient
     	return preamble;	
     }
     
-    public void postDataSamples() throws ResourceException {
+    public void postDataSamples(SerialMsg message) throws Exception {
     	
     	/*
     	 *  POST /energyInfo/dataSample - Send one or more samples of data from your sensors
@@ -84,28 +94,34 @@ public class RESTClient
     	JSONObject content = preparePreamble();
     	
     	// Fill rest of the content data
-    	
-    	//
-    	
-    	try {
-    		energyDataSampleClientResource.get().write(System.out);
-    	}
-    	catch(IOException e){
-    		System.out.println("Error");
-    	}
-    	  
-    	
-    	//StringRepresentation representation = new StringRepresentation(content.toString());
-    	//representation.setMediaType(MediaType.APPLICATION_ALL);
-    	
-    	//System.out.println(representation.getText());
-    	Representation result = energyDataSampleClientResource.post(null);
-    	
+
+        // Create sensor data object
+        JSONObject sensorData = new JSONObject();
+        sensorData.put("sensorId", 0);
+        sensorData.put("nodeId", message.get_srcid());
+        sensorData.put("timestamp", 1000);
+        sensorData.put("temp", message.get_temperature());
+        sensorData.put("lux", message.get_lux());
+
+        // Create the sensor data array
+        JSONArray arrayData = new JSONArray();
+        arrayData.put(sensorData);
+
+        // Add array to content
+        content.put("sensorData", arrayData);
+
+    	StringRepresentation representation = new StringRepresentation(content.toString());
+        representation.setMediaType(MediaType.APPLICATION_JSON);
+
+        System.out.println(representation.getText());
+
+    	Representation result = energyDataSampleClientResource.post(representation);
+
     	
     	if (energyDataSampleClientResource.getStatus().equals(Status.SUCCESS_OK)) {
     		
 			// handle data on success
-    		
+
     		String jsonData;
 			try {
 				jsonData = result.getText();
@@ -116,12 +132,11 @@ public class RESTClient
 	    		} else {
 	    			String errorCode = jsonResponse.getString("errorCode");
 	    			String errorMessage = jsonResponse.getString("errorMessage");
-	    			System.out.println("ERR! " + errorCode + ": " + errorMessage);
+	    			throw new Exception("Error (" + errorCode + "): " + errorMessage);
 	    		}
 			} catch (IOException e) {
 				e.printStackTrace();
 			} catch (JSONException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
     		
