@@ -1,7 +1,7 @@
 #include "Timer.h"
-#include "DataMsg.h"
+#include "../DataMsg.h"
 #include "SerialMsg.h"
-#include "FireMsg.h"
+#include "../FireMsg.h"
 
 module ReceiverC
 {

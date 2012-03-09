@@ -1,6 +1,6 @@
 #include "Timer.h"
-#include "DataMsg.h"
-#include "FireMsg.h"
+#include "../DataMsg.h"
+#include "../FireMsg.h"
 
 module SenderC
 {
@@ -76,7 +76,7 @@ implementation
 		neighboursLux[i] = FALSE;
 	}
 
-    call SensorTimer.startPeriodic(SAMPLE_PERIOD );
+    call SensorTimer.startPeriodic(SAMPLE_PERIOD);
     call AMControl.start();
   }
 
