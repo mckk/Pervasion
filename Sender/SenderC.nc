@@ -1,6 +1,7 @@
 #include "Timer.h"
 #include "../DataMsg.h"
 #include "../FireMsg.h"
+#include "../TimerRestartMsg.h"
 
 module SenderC
 {
@@ -18,15 +19,17 @@ module SenderC
   uses interface AMSend as FireMsgSend;
   uses interface Receive as DataReceive;
 
+  uses interface Receive as TimerMsgReceive;
+
 }
 implementation
 {
 
   enum {
   	SAMPLE_PERIOD = 1000,
-    NEIGHBOURS_NUMBER = 2, // the number of neighbour nodes
-    LOG_SIZE = 30,  // log size should be even
-	BASE_ADDR = 0x22, // the address of base station
+    NEIGHBOURS_NUMBER = 2,    // the number of neighbour nodes
+    LOG_SIZE          = 30,   // log size should be even
+	BASE_ADDR         = 0x22, // the address of base station
   };
 
   // used to store sensor's readings
@@ -76,7 +79,6 @@ implementation
 		neighboursLux[i] = FALSE;
 	}
 
-    call SensorTimer.startPeriodic(SAMPLE_PERIOD);
     call AMControl.start();
   }
 
@@ -138,6 +140,14 @@ implementation
 		neighboursLux[luxIndex] = d_pkt->lux < 100;
       } 
         
+      return msg;
+    }
+
+	// for receiving syncMessages
+    event message_t * TimerMsgReceive.receive(message_t * msg, void * payload, uint8_t len) {
+      if(len == sizeof(TimerRestartMsg)) {
+        call SensorTimer.startPeriodic(SAMPLE_PERIOD);
+      }
       return msg;
     }
 

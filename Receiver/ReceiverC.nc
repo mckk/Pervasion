@@ -2,11 +2,14 @@
 #include "../DataMsg.h"
 #include "SerialMsg.h"
 #include "../FireMsg.h"
+#include "../TimerRestartMsg.h"
 
 module ReceiverC
 {
   uses interface Leds;
   uses interface Boot;
+
+  uses interface Timer<TMilli> as SyncTimer;
 
   uses interface SplitControl as AMControl;
   uses interface Receive as DataReceive;
@@ -15,7 +18,10 @@ module ReceiverC
   uses interface Packet as SerialPacket;
   uses interface AMSend as SerialSend;
 
-  uses interface Receive as FireMsgReceive;  
+  uses interface Receive as FireMsgReceive;
+  
+  uses interface Packet as TimerPacket;
+  uses interface AMSend as TimerSend;
 }
 implementation
 {
@@ -36,12 +42,27 @@ implementation
 
     call AMControl.start();
 
+    call SyncTimer.startPeriodic(10000);
+
     call SerialAMControl.start();
   }
 
-   event void AMControl.stopDone(error_t err) {
-        if(err == SUCCESS){
-	    	AMBusy = TRUE;
+  event void SyncTimer.fired() {
+    TimerRestartMsg *pkt = NULL;
+    pkt = (TimerRestartMsg *)(call TimerPacket.getPayload(&datapkt, sizeof(TimerRestartMsg)));
+    pkt -> srcid = TOS_NODE_ID;
+    if (!AMBusy && call TimerSend.send(AM_BROADCAST_ADDR, &datapkt, sizeof(DataMsg)) == SUCCESS){
+	  AMBusy = TRUE;
+	}
+  }
+
+  event void TimerSend.sendDone(message_t *msg, error_t error) {
+     AMBusy = FALSE;
+  }
+
+  event void AMControl.stopDone(error_t err) {
+       if(err == SUCCESS){
+	   	AMBusy = TRUE;
         }
     }
     
@@ -49,7 +70,7 @@ implementation
         if (err == SUCCESS) {
             AMBusy    = FALSE;
         }
-    } 
+    }
 
 
     event message_t * DataReceive.receive(message_t * msg, void * payload, uint8_t len) {
@@ -58,7 +79,7 @@ implementation
         
       if(len == sizeof(DataMsg)) {
         d_pkt = (DataMsg *) payload;      
-      }       
+      }
       
       s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
         
