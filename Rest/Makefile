@@ -1,6 +1,6 @@
 MAIN=uk.ac.imperial.doc.rest.MsgReader
 
-INPUT=SerialMsg -comm serial@/dev/ttyUSB1:micaz
+INPUT=uk.ac.imperial.doc.rest.SerialMsg -comm serial@/dev/ttyUSB1:micaz
 
 all: clean build
 
