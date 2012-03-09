@@ -9,14 +9,11 @@ module ReceiverC
   uses interface Boot;
 
   uses interface SplitControl as AMControl;
-  uses interface Packet as DataPacket;
-  uses interface AMSend as DataSend;
   uses interface Receive as DataReceive;
 
   uses interface SplitControl as SerialAMControl;
   uses interface Packet as SerialPacket;
   uses interface AMSend as SerialSend;
-  uses interface Receive as SerialReceive;
 
   uses interface Receive as FireMsgReceive;  
 }
@@ -54,12 +51,6 @@ implementation
         }
     } 
 
-    event void DataSend.sendDone(message_t * msg, error_t error) {
-        if (&datapkt == msg) {
-            AMBusy = FALSE;
-        }
-        
-    }
 
     event message_t * DataReceive.receive(message_t * msg, void * payload, uint8_t len) {
       SerialMsg * s_pkt = NULL;
@@ -124,9 +115,5 @@ implementation
     } 
     event void SerialSend.sendDone(message_t *msg, error_t error) {
         SerialAMBusy = FALSE;
-    }
-
-    event message_t * SerialReceive.receive(message_t * msg, void * payload, uint8_t len) {
-        return msg; 
     }
 }
