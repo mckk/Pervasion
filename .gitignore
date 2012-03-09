@@ -3,3 +3,4 @@ Receiver/build/*
 Rest/.*
 Rest/*.iml
 Rest/target
+Rest/local-repo/*
