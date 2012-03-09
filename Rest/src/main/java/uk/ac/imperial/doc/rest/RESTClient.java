@@ -2,6 +2,7 @@ package uk.ac.imperial.doc.rest;
 
 import java.io.IOException;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import net.tinyos.message.Message;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -64,7 +65,24 @@ public class RESTClient
     	
     	return preamble;	
     }
-    
+
+    private JSONObject makeSensorObject(SerialMsg message, boolean isTempPacket) throws JSONException {
+
+        JSONObject sensorData = new JSONObject();
+        sensorData.put("sensorId", 0);
+        sensorData.put("nodeId", message.get_srcid());
+        sensorData.put("timestamp", 1000);
+        if (isTempPacket) {
+             sensorData.put("temp", message.get_temperature());
+            sensorData.put("lux", JSONObject.NULL);
+        }
+        else {
+             sensorData.put("lux", message.get_lux());
+            sensorData.put("temp", JSONObject.NULL);
+        }
+        return sensorData;
+    }
+
     public void postDataSamples(SerialMsg message) throws Exception {
     	
     	/*
@@ -96,16 +114,13 @@ public class RESTClient
     	// Fill rest of the content data
 
         // Create sensor data object
-        JSONObject sensorData = new JSONObject();
-        sensorData.put("sensorId", 0);
-        sensorData.put("nodeId", message.get_srcid());
-        sensorData.put("timestamp", 1000);
-        sensorData.put("temp", message.get_temperature());
-        sensorData.put("lux", message.get_lux());
+        JSONObject temperatureData = makeSensorObject(message, true);
+        //JSONObject lightData = makeSensorObject(message, false);
 
         // Create the sensor data array
         JSONArray arrayData = new JSONArray();
-        arrayData.put(sensorData);
+        arrayData.put(temperatureData);
+        //arrayData.put(lightData);
 
         // Add array to content
         content.put("sensorData", arrayData);

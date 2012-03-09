@@ -70,11 +70,18 @@ public class MsgReader implements MessageListener {
 
     public void messageReceived(int to, Message message) {
 
+        System.out.println("message received");
+
         // create message
         SerialMsg serialMsg = (SerialMsg) message;
 
         try {
-            restClient.postDataSamples(serialMsg);
+            System.out.println("IM READING: " + serialMsg.get_srcid());
+            if (serialMsg.get_fire() != 0) {
+                restClient.postEvent();
+            } else {
+                restClient.postDataSamples(serialMsg);
+            }
         } catch (Exception e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }

@@ -17,7 +17,7 @@
         <repository>
             <id>my</id>
             <url>file://${basedir}/local-repo</url>
-      </repository>
+        </repository>
     </repositories>
 
     <properties>

@@ -14,7 +14,6 @@ run:
 	mvn exec:java -Dexec.mainClass="$(MAIN)"  -Dexec.args="$(INPUT)"
 	
 install-tinyos:
-	@echo "--------------Installing tinyos to local repo--------------"
 	mvn install:install-file -Dfile=lib/tinyos.jar \
                          -DgroupId=net.tinyos \
                          -DartifactId=tinyos-java \
