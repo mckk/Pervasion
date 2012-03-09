@@ -1,0 +1,1 @@
+mig java -java-classname=SerialMsg ../Receiver/SerialMsg.h src/main/java/uk/ac/imperial/doc/rest/SerialMsg -o src/main/java/uk/ac/imperial/doc/rest/SerialMsg.java
