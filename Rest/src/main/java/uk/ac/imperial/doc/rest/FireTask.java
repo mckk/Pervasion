@@ -13,7 +13,11 @@ public class FireTask extends TimerTask {
 
     @Override
     public void run() {
-        client.sendFireEvent();
+        try {
+            client.sendFireEvent();
+        } catch (Exception e) {
+            e.printStackTrace();  //TODO CHANGE
+        }
         client.resetFireMap();
     }
 }

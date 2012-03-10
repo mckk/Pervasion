@@ -1,19 +1,28 @@
-MAIN=uk.ac.imperial.doc.rest.MsgReader
+SRC_PACKAGE=uk.ac.imperial.doc.rest
+SRC_DIR=src/main/java/uk/ac/imperial/doc/rest
 
-INPUT=uk.ac.imperial.doc.rest.SerialMsg -comm serial@/dev/ttyUSB1:micaz
+MAIN=$(SRC_PACKAGE).MsgReader
+INPUT=$(SRC_PACKAGE).SerialMsg -comm serial@/dev/ttyUSB1:micaz
 
-all: clean build
+all: serial build 	
 
 clean:
 	mvn clean
+	rm -f $(SRC_DIR)/SerialMsg.java
 
-build: install-tinyos
+build: install
 	mvn package
 	
 run:
 	mvn exec:java -Dexec.mainClass="$(MAIN)"  -Dexec.args="$(INPUT)"
+
+serial:
+	mig java -java-classname=SerialMsg ../Receiver/SerialMsg.h SerialMsg -o $(SRC_DIR)/SerialMsg.java
+	cp $(SRC_DIR)/SerialMsg.java $(SRC_DIR)/Temp.java
+	(echo "package $(SRC_PACKAGE);\n" ; cat $(SRC_DIR)/Temp.java) > $(SRC_DIR)/SerialMsg.java
+	rm -f $(SRC_DIR)/Temp.java 
 	
-install-tinyos:
+install:
 	mvn install:install-file -Dfile=lib/tinyos.jar \
                          -DgroupId=net.tinyos \
                          -DartifactId=tinyos-java \
