@@ -30,10 +30,12 @@ implementation
   SenderC.Lux_Sensor -> Lux_Sensor;
 
   SenderC.AMControl -> ActiveMessageC;
+  
   SenderC.DataPacket -> DataSender;
-  SenderC.DataSend -> DataSender;
-  SenderC.FireMsgSend -> FireMsgSender;
   SenderC.DataReceive -> DataReceiver;
+  SenderC.DataSend -> DataSender;
+  
+  SenderC.FireMsgSend -> FireMsgSender;
 
   SenderC.TimerMsgReceive -> TimerMsgReceiver;
 }
