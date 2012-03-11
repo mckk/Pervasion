@@ -29,18 +29,17 @@ public class RESTClient {
     private static final String dataCollectionAddr3 = "146.169.37.102";
     private static final String dataCollectionAddr4 = "146.169.37.103";
 
+    // Group info
     private static final String groupID = "9";
     private static final String APIKey = "fRrefHtp";
     private static final String groupName = "Pervasion";
 
+    // Number of nodes
     private static final int NODES_NUM = 2;
 
+    // RESTlet resource objects
     private ClientResource energyDataSampleClientResource;
     private ClientResource energyEventClientResource;
-
-    // FireTask object responsible for deciding when to trigger
-    // fire messages
-    private FireTask fireTask;
 
     // Mapping from node id to sensor id
     private HashMap<Integer, Integer> sensorNodeMapping;
@@ -141,6 +140,7 @@ public class RESTClient {
         StringRepresentation representation = new StringRepresentation(content.toString());
         representation.setMediaType(MediaType.APPLICATION_JSON);
 
+        // Print representation for debugging
         System.out.println(representation.getText());
 
         // Perform the POST
@@ -197,11 +197,13 @@ public class RESTClient {
         StringRepresentation representation = new StringRepresentation(content.toString());
         representation.setMediaType(MediaType.APPLICATION_JSON);
 
+        // Print representation for debugging
         System.out.println(representation.getText());
 
         // Perform the POST
         Representation result = energyEventClientResource.post(representation);
 
+        // Handle the result
         handlePost(energyEventClientResource, result);
     }
 
@@ -251,7 +253,8 @@ public class RESTClient {
             }
 
         } else {
-           // TODO
+            System.err.println("Status returned differed from 200 and was: "
+                    + cResource.getStatus());
         }
 
     }
