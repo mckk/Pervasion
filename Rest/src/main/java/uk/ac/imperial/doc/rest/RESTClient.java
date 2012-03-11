@@ -1,16 +1,14 @@
 package uk.ac.imperial.doc.rest;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.HashMap;
-import java.util.Timer;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
-import net.tinyos.message.Message;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.restlet.data.Form;
 import org.restlet.data.MediaType;
 import org.restlet.data.Preference;
 import org.restlet.data.Status;
@@ -23,27 +21,37 @@ import org.restlet.resource.ClientResource;
  * REST client main class
  */
 public class RESTClient {
-    // The data collection IP addresses.
-    static String dataCollectionAddr1 = "146.169.37.100";
-    static String dataCollectionAddr2 = "146.169.37.101";
-    static String dataCollectionAddr3 = "146.169.37.102";
-    static String dataCollectionAddr4 = "146.169.37.103";
 
-    static String groupID = "9";
-    static String APIKey = "fRrefHtp";
-    static String groupName = "Pervasion";
+    // Data collection IP addresses.
+    @SuppressWarnings("unused")
+    private static final String dataCollectionAddr1 = "146.169.37.100";
+    private static final String dataCollectionAddr2 = "146.169.37.101";
+    private static final String dataCollectionAddr3 = "146.169.37.102";
+    private static final String dataCollectionAddr4 = "146.169.37.103";
+
+    private static final String groupID = "9";
+    private static final String APIKey = "fRrefHtp";
+    private static final String groupName = "Pervasion";
+
+    private static final int NODES_NUM = 2;
 
     private ClientResource energyDataSampleClientResource;
     private ClientResource energyEventClientResource;
 
-    private Timer fireResetTimer;
+    // FireTask object responsible for deciding when to trigger
+    // fire messages
+    private FireTask fireTask;
 
+    // Mapping from node id to sensor id
     private HashMap<Integer, Integer> sensorNodeMapping;
     private int mappingCounter = 0;
 
+    // Indicating which nodes reported fire
     private ConcurrentHashMap<Integer, Boolean> fireMap;
 
     public RESTClient() {
+
+        // Initialize client resource objects
         String energyDataURL = "http://" + dataCollectionAddr1 + ":8080/energy-data-service/energyInfo/dataSample";
         String energyEventURL = "http://" + dataCollectionAddr1 + ":8080/energy-data-service/energyInfo/event";
 
@@ -54,12 +62,13 @@ public class RESTClient {
         energyDataSampleClientResource.getClientInfo().getAcceptedMediaTypes().add(new Preference<MediaType>(MediaType.APPLICATION_JSON));
         energyEventClientResource.getClientInfo().getAcceptedMediaTypes().add(new Preference<MediaType>(MediaType.APPLICATION_JSON));
 
-        sensorNodeMapping = new HashMap<Integer, Integer>(3);
-        fireMap = new ConcurrentHashMap<Integer, Boolean>(3);
-
-        fireResetTimer = new Timer();
+        // initialize sensor-node mapping
+        sensorNodeMapping = new HashMap<Integer, Integer>();
     }
 
+    /*
+     * Just for testing
+     */
     public static void main(String args[]) throws Exception {
 
         RESTClient client = new RESTClient();
@@ -71,7 +80,7 @@ public class RESTClient {
 
 
         if (message.get_fire() != 0) {
-            client.postEvent(message);
+            //client.notifyAboutFire();
         } else {
             client.postDataSamples(message);
         }
@@ -80,36 +89,12 @@ public class RESTClient {
 
     }
 
-    private JSONObject preparePreamble() {
-        JSONObject preamble = new JSONObject();
-        try {
-            preamble.put("groupId", groupID);
-            preamble.put("key", APIKey);
-            preamble.put("groupName", groupName);
-        } catch (JSONException e) {
-            System.err.println("PreparePreamble Error!");
-            e.printStackTrace();
-        }
 
-        return preamble;
-    }
-
-    private JSONObject makeSensorObject(SerialMsg message, boolean isTempPacket) throws JSONException, Exception {
-
-        JSONObject sensorData = new JSONObject();
-        sensorData.put("sensorId", getSensorId(message.get_srcid()));
-        sensorData.put("nodeId", message.get_srcid());
-        sensorData.put("timestamp", 1000);
-        if (isTempPacket) {
-            sensorData.put("temp", message.get_temperature());
-            sensorData.put("lux", JSONObject.NULL);
-        } else {
-            sensorData.put("lux", message.get_lux());
-            sensorData.put("temp", JSONObject.NULL);
-        }
-        return sensorData;
-    }
-
+    /**
+     * Post reading sample to data collection unit and couch db instance
+     * @param message  serial message representing sensor's reading
+     * @throws Exception  throws exception when posting data fails
+     */
     public void postDataSamples(SerialMsg message) throws Exception {
 
         /*
@@ -142,12 +127,12 @@ public class RESTClient {
 
         // Create sensor data object
         JSONObject temperatureData = makeSensorObject(message, true);
-        //JSONObject lightData = makeSensorObject(message, false);
+        JSONObject lightData = makeSensorObject(message, false);
 
         // Create the sensor data array
         JSONArray arrayData = new JSONArray();
         arrayData.put(temperatureData);
-        //arrayData.put(lightData);
+        arrayData.put(lightData);
 
         // Add array to content
         content.put("sensorData", arrayData);
@@ -161,67 +146,18 @@ public class RESTClient {
         // Perform the POST
         Representation result = energyDataSampleClientResource.post(representation);
 
-        // If success
+        // Handle the result
         handlePost(energyDataSampleClientResource, result);
 
     }
 
 
-    public void postEvent(SerialMsg message) {
-        fireResetTimer.cancel();
-        fireResetTimer.schedule(new FireTask(this), 30000);
-    }
-
-
-    public void handlePost(ClientResource cResource, Representation result) throws Exception {
-
-
-        if (cResource.getStatus().equals(Status.SUCCESS_OK)) {
-
-            // handle data on success
-            String jsonData;
-            try {
-                jsonData = result.getText();
-                JSONObject jsonResponse = new JSONObject(jsonData);
-                String responseOK = jsonResponse.getString("OK");
-                if (responseOK.compareToIgnoreCase("true") == 0) {
-                    System.out.println("Correctly read!");
-                } else {
-                    String errorCode = jsonResponse.getString("errorCode");
-                    String errorMessage = jsonResponse.getString("errorMessage");
-                    throw new Exception("Error (" + errorCode + "): " + errorMessage);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-
-        } else {
-
-        }
-
-    }
-
-    public int getSensorId(int nodeID) throws Exception {
-
-        if (!sensorNodeMapping.containsKey(nodeID)) {
-            sensorNodeMapping.put(nodeID, mappingCounter);
-            mappingCounter++;
-        }
-        if (sensorNodeMapping.size() > 2) {
-            throw new Exception("There are more nodes relaying messages than allowed!");
-        }
-        return sensorNodeMapping.get(nodeID);
-    }
-
-    public void resetFireMap() {
-        for (Integer key : fireMap.keySet()) {
-            fireMap.put(key, false);
-        }
-    }
-
-    public void sendFireEvent() throws Exception {
+    /**
+     * Posts fire event
+     * @param sensorIdList  list of sensors reporting fire
+     * @throws Exception    exception thrown when posting unsuccessful
+     */
+    public void postFireEvent(Set<Integer> sensorIdList) throws Exception {
 
         /*
            *  POST /energyInfo/event - Send an event identified by your sensors
@@ -243,7 +179,6 @@ public class RESTClient {
            *  	errorMessage: string			A message describing the error
            */
 
-
         JSONObject content = preparePreamble();
 
         // Set the information about the fire event.
@@ -251,13 +186,12 @@ public class RESTClient {
         content.put("eventMessage", "A fire event occurred!");
 
         // create the sensorIdList
-        JSONArray sensorIdList = new JSONArray();
-        for (Integer key : fireMap.keySet()) {
-            if (fireMap.get(key)) {
-               sensorIdList.put(key);
-            }
+        JSONArray sensorIdListJSON = new JSONArray();
+        for (Integer sensorId : sensorIdList) {
+            sensorIdListJSON.put(sensorId);
         }
-        content.put("sensorIdList", sensorIdList);
+
+        content.put("sensorIdList", sensorIdListJSON);
 
         // Set data and its type to JSON
         StringRepresentation representation = new StringRepresentation(content.toString());
@@ -271,4 +205,92 @@ public class RESTClient {
         handlePost(energyEventClientResource, result);
     }
 
+    /**
+     * Returns sensor id as mapped by node id. If the mapping has not yet been
+     * created for the input node id a new mapping is created.
+     * @param nodeID  input node id
+     * @return  sensor id associated with input node
+     */
+    public int getSensorId(int nodeID) {
+
+        if (!sensorNodeMapping.containsKey(nodeID)) {
+            sensorNodeMapping.put(nodeID, mappingCounter);
+            mappingCounter++;
+        }
+        if (sensorNodeMapping.size() > NODES_NUM) {
+            System.err.println("There are more nodes relaying messages than allowed!");
+        }
+        return sensorNodeMapping.get(nodeID);
+    }
+
+    /*
+     * Handles the output of the data collection unit
+     */
+    private void handlePost(ClientResource cResource, Representation result) {
+
+
+        if (cResource.getStatus().equals(Status.SUCCESS_OK)) {
+
+            // handle data on success
+            String jsonData;
+            try {
+                jsonData = result.getText();
+                JSONObject jsonResponse = new JSONObject(jsonData);
+                String responseOK = jsonResponse.getString("OK");
+                if (responseOK.compareToIgnoreCase("true") == 0) {
+                    System.out.println("Correctly read!");
+                } else {
+                    String errorCode = jsonResponse.getString("errorCode");
+                    String errorMessage = jsonResponse.getString("errorMessage");
+                    System.err.println("Error (" + errorCode + "): " + errorMessage);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+        } else {
+           // TODO
+        }
+
+    }
+
+    /*
+     * Creates JSONObject with group info
+     */
+    private JSONObject preparePreamble() {
+        JSONObject preamble = new JSONObject();
+        try {
+            preamble.put("groupId", groupID);
+            preamble.put("key", APIKey);
+            preamble.put("groupName", groupName);
+        } catch (JSONException e) {
+            System.err.println("PreparePreamble Error!");
+            e.printStackTrace();
+        }
+
+        return preamble;
+    }
+
+    /*
+     * Returns JSON object encapsulating the sensor data for both: temperature
+     * and light reading. Also timestamps the reading
+     */
+    private JSONObject makeSensorObject(SerialMsg message, boolean isTempPacket)
+            throws JSONException {
+
+        JSONObject sensorData = new JSONObject();
+        sensorData.put("sensorId", getSensorId(message.get_srcid()));
+        sensorData.put("nodeId", message.get_srcid());
+        sensorData.put("timestamp", (new Date()).getTime());
+        if (isTempPacket) {
+            sensorData.put("temp", message.get_temperature());
+            sensorData.put("lux", JSONObject.NULL);
+        } else {
+            sensorData.put("lux", message.get_lux());
+            sensorData.put("temp", JSONObject.NULL);
+        }
+        return sensorData;
+    }
 }

@@ -54,6 +54,7 @@ public class MsgReader implements MessageListener {
 
     private MoteIF moteIF;
     private RESTClient restClient;
+    private FireTask fireTask;
 
     public MsgReader(String source) throws Exception {
         if (source != null) {
@@ -63,6 +64,7 @@ public class MsgReader implements MessageListener {
         }
 
         restClient = new RESTClient();
+        fireTask = new FireTask(restClient);
     }
 
     public void start() {
@@ -78,12 +80,12 @@ public class MsgReader implements MessageListener {
         try {
             System.out.println("IM READING: " + serialMsg.get_srcid());
             if (serialMsg.get_fire() != 0) {
-                restClient.postEvent(serialMsg);
+                fireTask.notifyAboutFire(restClient.getSensorId(serialMsg.get_srcid()));
             } else {
                 restClient.postDataSamples(serialMsg);
             }
         } catch (Exception e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            e.printStackTrace();  //TODO
         }
     }
 
