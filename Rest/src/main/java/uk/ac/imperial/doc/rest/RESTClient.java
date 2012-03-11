@@ -65,30 +65,6 @@ public class RESTClient {
         sensorNodeMapping = new HashMap<Integer, Integer>();
     }
 
-    /*
-     * Just for testing
-     */
-    public static void main(String args[]) throws Exception {
-
-        RESTClient client = new RESTClient();
-
-        SerialMsg message = new SerialMsg();
-        message.set_srcid(35);
-        message.set_lux((short) 59);
-        message.set_temperature((short) 200);
-
-
-        if (message.get_fire() != 0) {
-            //client.notifyAboutFire();
-        } else {
-            client.postDataSamples(message);
-        }
-
-        client.postDataSamples(message);
-
-    }
-
-
     /**
      * Post reading sample to data collection unit and couch db instance
      * @param message  serial message representing sensor's reading

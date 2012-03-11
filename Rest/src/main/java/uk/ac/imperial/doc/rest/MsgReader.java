@@ -79,9 +79,12 @@ public class MsgReader implements MessageListener {
 
         try {
             System.out.println("IM READING: " + serialMsg.get_srcid());
+
             if (serialMsg.get_fire() != 0) {
+                // We have a fire message
                 fireTask.notifyAboutFire(restClient.getSensorId(serialMsg.get_srcid()));
             } else {
+                // We have a normal reading
                 restClient.postDataSamples(serialMsg);
             }
         } catch (Exception e) {
