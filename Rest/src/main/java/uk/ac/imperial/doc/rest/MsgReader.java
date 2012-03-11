@@ -54,7 +54,7 @@ public class MsgReader implements MessageListener {
 
     private MoteIF moteIF;
     private RESTClient restClient;
-    private FireTask fireTask;
+    private FireManager fireManager;
 
     public MsgReader(String source) throws Exception {
         if (source != null) {
@@ -64,7 +64,7 @@ public class MsgReader implements MessageListener {
         }
 
         restClient = new RESTClient();
-        fireTask = new FireTask(restClient);
+        fireManager = new FireManager(restClient);
     }
 
     public void start() {
@@ -81,7 +81,7 @@ public class MsgReader implements MessageListener {
 
         if (serialMsg.get_fire() != 0) {
             // We have a fire message
-            fireTask.notifyAboutFire(restClient.getSensorId(serialMsg.get_srcid()));
+            fireManager.notifyAboutFire(restClient.getSensorId(serialMsg.get_srcid()));
         } else {
             // We have a normal reading
             try {

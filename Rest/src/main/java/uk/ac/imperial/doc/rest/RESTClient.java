@@ -35,7 +35,7 @@ public class RESTClient {
     private static final String groupName = "Pervasion";
 
     // Number of nodes
-    private static final int NODES_NUM = 2;
+    private static final int NODES_NUM = 3;
 
     // RESTlet resource objects
     private ClientResource energyDataSampleClientResource;
