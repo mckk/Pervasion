@@ -19,11 +19,14 @@ module ReceiverC
   uses interface Packet as TimerPacket;
   uses interface AMSend as TimerSend;
 
-
   //Serial controls
   uses interface SplitControl as SerialAMControl;
   uses interface Packet as SerialPacket;
   uses interface AMSend as SerialSend;
+
+  // Data queues
+  uses interface Queue<FireMsg> as FireQueue;
+  uses interface Queue<DataMsg> as DataQueue;
 }
 implementation
 {
@@ -62,6 +65,67 @@ implementation
     }
   }
 
+// -----------------SEND MESSAGE TASKS-----------------------------------------//
+  task void sendFireMessage() 
+  {
+    // drain the queue
+    FireMessage msg = call FireQueue.dequeue();
+    FireMessage* msg_pkt = &msg; 
+
+    if(!SerialAMBusy) {
+      // SerialAMBusy should never be true when the task is being called
+      // but the check is included as the author is a defensive programmer
+
+      SerialMsg * s_pkt = NULL;
+      s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
+      
+      // Set the serial fire message
+      s_pkt->header      = SERIALMSG_HEADER;
+      s_pkt->srcid       = fire_pkt->srcid;
+      s_pkt->fire        = TRUE;
+      s_pkt->temperature = 0;
+      s_pkt->lux         = 0;
+
+      // Send the message
+      if (call SerialSend.send(AM_BROADCAST_ADDR, &serialpkt, sizeof(SerialMsg)) == SUCCESS) {
+        SerialAMBusy = TRUE;
+      } 
+
+      // Toggle the led to indicate sending
+      call Leds.led1Toggle();
+    }
+  }
+
+  task sendDataMessage() 
+  {
+    // Drain the queue
+    DataMsg d_msg = call DataQueue.dequeue();
+    DataMsg* d_pkt = &d_msg;
+
+    if(!SerialAMBusy) {
+      // again, defensive programming, as this should not be null
+
+      SerialMsg * s_pkt = NULL;
+      s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
+      
+      // create serial msg
+      s_pkt->header      = SERIALMSG_HEADER;
+      s_pkt->srcid       = d_pkt->srcid;
+      s_pkt->temperature = d_pkt->temp;
+      s_pkt->lux         = d_pkt->lux;
+      s_pkt->fire        = FALSE;
+      
+      // send serial msg
+      if (call SerialSend.send(AM_BROADCAST_ADDR, &serialpkt, sizeof(SerialMsg)) == SUCCESS) {
+        SerialAMBusy = TRUE;
+      } 
+
+      // toggle led to indicate sending
+      call Leds.led0Toggle();
+    }
+  }
+
+
 //-----------------RADIO EVENTS------------------------------------//
   event void AMControl.startDone(error_t err)
   {
@@ -84,58 +148,46 @@ implementation
   
   event message_t * FireMsgReceive.receive(message_t * msg, void * payload, uint8_t len)
   {
+    if (len != sizeof(FireMsg)) {
+      return msg;
+    }
+
+    FireMsg * fire_pkt = NULL;
+    fire_pkt = (FireMsg *) payload;
+
     if(!SerialAMBusy) {
-      FireMsg * fire_pkt = NULL;
-      SerialMsg * s_pkt = NULL;
-
-      if (len != sizeof(FireMsg)) {
-        return msg;
-      }
-      
-      fire_pkt = (FireMsg *) payload;
-
-      s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
-      
-      s_pkt->header      = SERIALMSG_HEADER;
-      s_pkt->srcid       = fire_pkt->srcid;
-      s_pkt->fire        = TRUE;
-      s_pkt->temperature = 0;
-      s_pkt->lux         = 0;
-
-      if (call SerialSend.send(AM_BROADCAST_ADDR, &serialpkt, sizeof(SerialMsg)) == SUCCESS) {
-        SerialAMBusy = TRUE;
-      } 
-
-      call Leds.led1Toggle();
+      // if SerialAM is not busy, add the message to the queue
+      // and post a task to send it 
+      call FireQueue.enqueue(*fire_pkt);
+      post sendFireMessage(); 
+    }
+    else {
+      // else only add it to the queue, the queue will be drained 
+      // when the current fire message finishes sending
+      call FireQueue.enqueue(*fire_pkt); 
     }
     return msg;
   }
 
   event message_t * DataReceive.receive(message_t * msg, void * payload, uint8_t len)
   {
-    if(!SerialAMBusy) {
-      SerialMsg * s_pkt = NULL;
-      DataMsg * d_pkt = NULL;
-      
-      if(len != sizeof(DataMsg)) {
-        return msg;
-      }
-      
-      d_pkt = (DataMsg *) payload; 
-      
-      s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
-      
-      s_pkt->header      = SERIALMSG_HEADER;
-      s_pkt->srcid       = d_pkt->srcid;
-      s_pkt->temperature = d_pkt->temp;
-      s_pkt->lux         = d_pkt->lux;
-      s_pkt->fire        = FALSE;
-      
-      if (call SerialSend.send(AM_BROADCAST_ADDR, &serialpkt, sizeof(SerialMsg)) == SUCCESS) {
-        SerialAMBusy = TRUE;
-      } 
+    if(len != sizeof(DataMsg)) {
+      return msg;
+    }
+    
+    DataMsg * d_pkt = NULL;
+    d_pkt = (DataMsg *) payload;
 
-      call Leds.led0Toggle();
+    if(!SerialAMBusy) {
+      // if SerialAM is not busy, add the message to the queue
+      // and post a task to send it 
+      call DataQueue.enqueue(*d_pkt);
+      post sendDataMessage();
+    }
+    else {
+      // else only add it to the queue, the queue will be drained 
+      // when the current data message finishes sending
+      call DataQueue.enqueue(*d_pkt);
     }
         
     return msg;
@@ -159,6 +211,14 @@ implementation
   event void SerialSend.sendDone(message_t *msg, error_t error)
   {
     SerialAMBusy = FALSE;
+    if (!(call FireQueue.empty()) {
+      // fire queue is not empty, post fireSend task
+      post sendFireMessage();
+    }
+    else if (!(call DataQueue.empty()) {
+      // else, data queue (lower priority) is not empty, so post dataSend
+      post sendDataMessage(); 
+    }
   }
   
 }

@@ -5,8 +5,12 @@ configuration ReceiverAppC
 }
 implementation
 {
-  components MainC, ReceiverC, LedsC;
+  enum {
+    MSG_QUEUE_SIZE     = 4,
+  };
 
+
+  components MainC, ReceiverC, LedsC;
 
   //Timer for sync messsages
   components new TimerMilliC() as SyncTimer;
@@ -25,6 +29,10 @@ implementation
   //Sender for data messages
   components new SerialAMSenderC(AM_SERIALMSG) as SerialSender;
 
+  // Queues
+  components new QueueC(FireMsg, MSG_QUEUE_SIZE) as FireQueue;
+  components new QueueC(DataMsg, MSG_QUEUE_SIZE) as DataQueue;
+
   ReceiverC -> MainC.Boot;
   ReceiverC.Leds -> LedsC;
   ReceiverC.SyncTimer -> SyncTimer;
@@ -38,5 +46,8 @@ implementation
   ReceiverC.SerialAMControl -> SerialActiveMessageC;
   ReceiverC.SerialPacket    -> SerialSender;
   ReceiverC.SerialSend      -> SerialSender;
+
+  ReceiverC.FireQueue       -> FireQueue;
+  ReceiverC.DataQueue       -> DataQueue;
 }
 
