@@ -19,6 +19,7 @@ implementation
   components new AMReceiverC(AM_DATAMSG) as DataReceiver;
 
   components new AMReceiverC(AM_TIMERRESTARTMSG) as TimerMsgReceiver;
+  components new AMSenderC(AM_TIMERRESTARTMSG) as TimerMsgSender;
 
   SenderC -> MainC.Boot;
 
@@ -37,6 +38,9 @@ implementation
   
   SenderC.FireMsgSend -> FireMsgSender;
 
-  SenderC.TimerMsgReceive -> TimerMsgReceiver;
+  SenderC.TimerReceive -> TimerMsgReceiver;
+  SenderC.TimerPacket  -> TimerMsgSender;
+  SenderC.TimerSend    -> TimerMsgSender;
+  
 }
 

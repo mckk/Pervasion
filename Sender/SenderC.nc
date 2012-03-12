@@ -21,7 +21,9 @@ module SenderC
   
   uses interface AMSend as FireMsgSend;
 
-  uses interface Receive as TimerMsgReceive;
+  uses interface Receive as TimerReceive;
+  uses interface Packet as TimerPacket;
+  uses interface AMSend as TimerSend;
 
 }
 implementation
@@ -83,6 +85,55 @@ implementation
     
     call AMControl.start();
   }
+  
+
+//-----------------SYNC EVENTS------------------------------------//
+
+  // for receiving syncMessages
+  event message_t * TimerReceive.receive(message_t * msg, void * payload, uint8_t len)
+  {
+    if(len == sizeof(TimerRestartMsg)) {
+      call SensorTimer.startPeriodic(SAMPLE_PERIOD);
+    }
+    return msg;
+  }
+  
+  task void syncTimers()
+  {
+    if (!AMBusy) {
+      TimerRestartMsg *pkt = NULL;
+      pkt = (TimerRestartMsg *)(call TimerPacket.getPayload(&datapkt, sizeof(TimerRestartMsg)));
+      pkt -> srcid = TOS_NODE_ID;
+      if (call TimerSend.send(BASE_ADDR, &datapkt, sizeof(TimerRestartMsg)) == SUCCESS){
+        AMBusy = TRUE;
+      }
+    }
+  }
+  
+  event void TimerSend.sendDone(message_t *msg, error_t error)
+  {
+    if (&datapkt == msg) {
+      AMBusy = FALSE;
+    }
+  }
+  
+//---------------BORING STUFF--------------------------------//
+  event void AMControl.stopDone(error_t err)
+  {
+    if(err == SUCCESS){
+      AMBusy = TRUE;
+    }
+  }
+
+  event void AMControl.startDone(error_t err)
+  {
+    if (err == SUCCESS) {
+      AMBusy = FALSE;
+      post syncTimers();
+    }
+  }
+  
+//--------------DATA EVENTS-----------------------------------//
 
   event void SensorTimer.fired()
   {
@@ -94,21 +145,7 @@ implementation
   {
     call Leds.led1Toggle();
   }
-
-  event void AMControl.stopDone(error_t err)
-  {
-    if(err == SUCCESS){
-      AMBusy = TRUE;
-    }
-  }
-    
-  event void AMControl.startDone(error_t err)
-  {
-    if (err == SUCCESS) {
-      AMBusy = FALSE;
-    }
-  } 
-
+  
   event void DataSend.sendDone(message_t * msg, error_t error)
   {
     if (&datapkt == msg) {
@@ -143,15 +180,6 @@ implementation
       }
       // flag whether any neighbour indicates dark
       neighboursLux[luxIndex] = d_pkt->lux < 100;
-    }
-    return msg;
-  }
-
-  // for receiving syncMessages
-  event message_t * TimerMsgReceive.receive(message_t * msg, void * payload, uint8_t len)
-  {
-    if(len == sizeof(TimerRestartMsg)) {
-      call SensorTimer.startPeriodic(SAMPLE_PERIOD);
     }
     return msg;
   }
@@ -276,5 +304,6 @@ implementation
       post sendData();
     }
   }
+
 }
 

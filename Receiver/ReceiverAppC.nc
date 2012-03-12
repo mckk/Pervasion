@@ -17,16 +17,17 @@ implementation
 
   //AM controller
   components ActiveMessageC;
-  //Receiver for data messages
+
   components new AMReceiverC(AM_DATAMSG) as DataReceiver;
-  //Receiver for fire messages
+
   components new AMReceiverC(AM_FIREMSG) as FireMsgReceiver;
-  //Sender for sync messages
+
+  components new AMReceiverC(AM_TIMERRESTARTMSG) as TimerMsgReceiver;
   components new AMSenderC(AM_TIMERRESTARTMSG) as TimerMsgSender;
 
   //Serial controller
   components SerialActiveMessageC;
-  //Sender for data messages
+
   components new SerialAMSenderC(AM_SERIALMSG) as SerialSender;
 
   // Queues
@@ -42,6 +43,7 @@ implementation
   ReceiverC.FireMsgReceive -> FireMsgReceiver;
   ReceiverC.TimerPacket    -> TimerMsgSender;
   ReceiverC.TimerSend      -> TimerMsgSender;
+  ReceiverC.TimerReceive   -> TimerMsgReceiver;
 
   ReceiverC.SerialAMControl -> SerialActiveMessageC;
   ReceiverC.SerialPacket    -> SerialSender;

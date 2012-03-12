@@ -18,6 +18,7 @@ module ReceiverC
   uses interface Receive as FireMsgReceive;
   uses interface Packet as TimerPacket;
   uses interface AMSend as TimerSend;
+  uses interface Receive as TimerReceive;
 
   //Serial controls
   uses interface SplitControl as SerialAMControl;
@@ -31,7 +32,7 @@ module ReceiverC
 implementation
 {
   enum {
-    SYNC_PERIOD = 10000, // Set sync period to 10 seconds
+    SYNC_PERIOD = 60000, // Set sync period to 60 seconds
   };
   
   bool AMBusy;
@@ -51,11 +52,11 @@ implementation
     call SyncTimer.startPeriodic(SYNC_PERIOD);
   }
   
-//-----------------TIMER EVENTS------------------------------------//
-  event void SyncTimer.fired()
+//-----------------SYNC EVENTS------------------------------------//
+
+  task void syncTimers()
   {
     if (!AMBusy) {
-      // On fired broadcast sync message
       TimerRestartMsg *pkt = NULL;
       pkt = (TimerRestartMsg *)(call TimerPacket.getPayload(&datapkt, sizeof(TimerRestartMsg)));
       pkt -> srcid = TOS_NODE_ID;
@@ -63,6 +64,27 @@ implementation
         AMBusy = TRUE;
       }
     }
+  }
+  
+  event void SyncTimer.fired()
+  {
+    // On fired broadcast sync message
+    post syncTimers();
+  }
+  
+  event void TimerSend.sendDone(message_t *msg, error_t error)
+  {
+    if (&datapkt == msg) {
+      AMBusy = FALSE;
+    }
+  }
+  
+  event message_t * TimerReceive.receive(message_t * msg, void * payload, uint8_t len)
+  {
+    post syncTimers();
+    //I think we don't have to do next line. Should be ok without it.
+    //call SyncTimer.startPeriodic(SYNC_PERIOD);
+    return msg;
   }
 
 // -----------------SEND MESSAGE TASKS-----------------------------------------//
@@ -131,6 +153,8 @@ implementation
   {
     if (err == SUCCESS) {
       AMBusy = FALSE;
+      //sync timers on boot!
+      post syncTimers();
     }
   }
   
