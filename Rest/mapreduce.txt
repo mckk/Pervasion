@@ -1,0 +1,10 @@
+function(doc) {
+  var tmstp = Math.floor(doc.timestamp / 10000);
+  emit([tmstp, "Temp"], doc.temp);
+  emit([tmstp, "Lux"], doc.lux);
+}
+
+
+function(key, values, rereduce) {
+     return key(0) + ' ' + (sum(values) / values.length);
+}
