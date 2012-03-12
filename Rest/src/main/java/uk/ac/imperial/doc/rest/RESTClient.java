@@ -82,6 +82,8 @@ public class RESTClient {
      */
     public void postDataSamples(SerialMsg message) throws Exception {
 
+
+
         /*
            *  POST /energyInfo/dataSample - Send one or more samples of data from your sensors
            *  Accept content: application/json
@@ -112,6 +114,10 @@ public class RESTClient {
 
         // Create sensor data object
         JSONObject temperatureData = makeSensorObject(message);
+
+        double temp = convertTemp(message.get_temperature());
+        System.out.println(temp);
+
         temperatureData.put("temp", message.get_temperature());
         temperatureData.put("lux", JSONObject.NULL);
 
@@ -296,5 +302,24 @@ public class RESTClient {
         sensorData.put("nodeId", message.get_srcid());
         sensorData.put("timestamp", (new Date()).getTime());
         return sensorData;
+    }
+
+
+    /*
+     * Returns the temperature in Kelvin given a mote temperature
+     *
+     */
+    private double convertTemp(short moteTemperature){
+
+        double a = 0.001010024;
+        double b = 0.000242127;
+        double c = 0.000000146;
+        double r1 = 10000;
+        double adc_fs = 1023;
+
+        double rthr = r1*(adc_fs - moteTemperature) / moteTemperature;
+        double tempTemp =  1/ (a + b * Math.log(rthr) + c * Math.pow(Math.log(rthr),3 ));
+        return tempTemp - 273.15;
+
     }
 }

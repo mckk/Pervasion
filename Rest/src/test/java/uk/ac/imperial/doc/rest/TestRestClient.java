@@ -19,14 +19,14 @@ public class TestRestClient {
     @Before
     public void buildMessages() {
         tempMsg = builder.buildSerialMsg(35)
-                .setTemperature((short)55)
+                .setTemperature((short)490)
                 .returnMessage();
         luxMsg = builder.buildSerialMsg(33)
                 .setLux((short)450)
                 .returnMessage();
         mixedMsg = builder.buildSerialMsg(36)
                 .setLux((short)178)
-                .setTemperature((short)56)
+                .setTemperature((short)492)
                 .returnMessage();
     }
 
