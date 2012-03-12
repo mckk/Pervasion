@@ -186,6 +186,7 @@ implementation
     int avgTwo = 0;
     int splitIndex;
     bool areNeighboursDark = TRUE;
+    bool isFire = FALSE;
     FireMsg *pkt = NULL;
     
     // The first condition is that all nodes detect that it is currently dark
@@ -224,6 +225,7 @@ implementation
         // we have fire
         // turn on red led
         call Leds.led0On();
+        isFire = TRUE;
 
         if(!AMBusy) {
           // send the fire message
@@ -235,7 +237,8 @@ implementation
           }
         }
       }
-    } else {
+    } 
+    if (!isFire) {
       // fire may be over, ensure that the red ligh is turned off
       call Leds.led0Off();
     }
