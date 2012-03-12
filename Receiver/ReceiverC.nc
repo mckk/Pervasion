@@ -69,8 +69,8 @@ implementation
   task void sendFireMessage() 
   {
     // drain the queue
-    FireMessage msg = call FireQueue.dequeue();
-    FireMessage* msg_pkt = &msg; 
+    FireMsg msg = call FireQueue.dequeue();
+    FireMsg* fire_pkt = &msg; 
 
     if(!SerialAMBusy) {
       // SerialAMBusy should never be true when the task is being called
@@ -96,7 +96,7 @@ implementation
     }
   }
 
-  task sendDataMessage() 
+  task void sendDataMessage() 
   {
     // Drain the queue
     DataMsg d_msg = call DataQueue.dequeue();
@@ -148,11 +148,11 @@ implementation
   
   event message_t * FireMsgReceive.receive(message_t * msg, void * payload, uint8_t len)
   {
+    FireMsg* fire_pkt = NULL;
+
     if (len != sizeof(FireMsg)) {
       return msg;
     }
-
-    FireMsg * fire_pkt = NULL;
     fire_pkt = (FireMsg *) payload;
 
     if(!SerialAMBusy) {
@@ -171,11 +171,11 @@ implementation
 
   event message_t * DataReceive.receive(message_t * msg, void * payload, uint8_t len)
   {
+    DataMsg* d_pkt = NULL;
+
     if(len != sizeof(DataMsg)) {
       return msg;
     }
-    
-    DataMsg * d_pkt = NULL;
     d_pkt = (DataMsg *) payload;
 
     if(!SerialAMBusy) {
@@ -211,11 +211,11 @@ implementation
   event void SerialSend.sendDone(message_t *msg, error_t error)
   {
     SerialAMBusy = FALSE;
-    if (!(call FireQueue.empty()) {
+    if (!(call FireQueue.empty())) {
       // fire queue is not empty, post fireSend task
       post sendFireMessage();
     }
-    else if (!(call DataQueue.empty()) {
+    else if (!(call DataQueue.empty())) {
       // else, data queue (lower priority) is not empty, so post dataSend
       post sendDataMessage(); 
     }
