@@ -127,7 +127,7 @@ public class RESTClient {
 
         JSONObject couchDBData = makeSensorObject(message);
         couchDBData.put("lux", message.get_lux());
-        couchDBData.put("temp", message.get_temperature());
+        couchDBData.put("temp", temp);
         postDataSampleToCouch(couchDBData);
 
         // Create the sensor data array
