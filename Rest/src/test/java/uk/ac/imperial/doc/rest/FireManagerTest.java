@@ -13,7 +13,7 @@ public class FireManagerTest {
         Thread.sleep(500);
 
         fireManager.notifyAboutFire(1);
-        Thread.sleep(5000);
+        Thread.sleep(3000);
 
         System.out.println("Second notify");
         fireManager.notifyAboutFire(0);

@@ -9,9 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.restlet.data.MediaType;
-import org.restlet.data.Preference;
-import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
 import org.restlet.resource.ClientResource;
@@ -29,6 +27,8 @@ public class RESTClient {
     private static final String dataCollectionAddr3 = "146.169.37.102";
     private static final String dataCollectionAddr4 = "146.169.37.103";
 
+    private static final String dbAddr              = "146.169.37.133";
+
     // Group info
     private static final String groupID = "9";
     private static final String APIKey = "fRrefHtp";
@@ -40,6 +40,7 @@ public class RESTClient {
     // RESTlet resource objects
     private ClientResource energyDataSampleClientResource;
     private ClientResource energyEventClientResource;
+    private ClientResource couchDBResource;
 
     // Mapping from node id to sensor id
     private HashMap<Integer, Integer> sensorNodeMapping;
@@ -53,13 +54,22 @@ public class RESTClient {
         // Initialize client resource objects
         String energyDataURL = "http://" + dataCollectionAddr1 + ":8080/energy-data-service/energyInfo/dataSample";
         String energyEventURL = "http://" + dataCollectionAddr1 + ":8080/energy-data-service/energyInfo/event";
+        String dbAddress = "http://" + dbAddr + ":5984/sensor_data";
 
         energyDataSampleClientResource = new ClientResource(energyDataURL);
         energyEventClientResource = new ClientResource(energyEventURL);
 
+        couchDBResource = new ClientResource(dbAddress);
+
         // set the accept header to application/json
         energyDataSampleClientResource.getClientInfo().getAcceptedMediaTypes().add(new Preference<MediaType>(MediaType.APPLICATION_JSON));
         energyEventClientResource.getClientInfo().getAcceptedMediaTypes().add(new Preference<MediaType>(MediaType.APPLICATION_JSON));
+        couchDBResource.getClientInfo().getAcceptedMediaTypes().add(new Preference<MediaType>(MediaType.APPLICATION_JSON));
+
+        // Add client authentication to couchDB
+        ChallengeScheme scheme = ChallengeScheme.HTTP_BASIC;
+        ChallengeResponse authentication = new ChallengeResponse(scheme, "admin", APIKey);
+        couchDBResource.setChallengeResponse(authentication);
 
         // initialize sensor-node mapping
         sensorNodeMapping = new HashMap<Integer, Integer>();
@@ -101,8 +111,18 @@ public class RESTClient {
         // Fill rest of the content data
 
         // Create sensor data object
-        JSONObject temperatureData = makeSensorObject(message, true);
-        JSONObject lightData = makeSensorObject(message, false);
+        JSONObject temperatureData = makeSensorObject(message);
+        temperatureData.put("temp", message.get_temperature());
+        temperatureData.put("lux", JSONObject.NULL);
+
+        JSONObject lightData = makeSensorObject(message);
+        lightData.put("lux", message.get_lux());
+        lightData.put("temp", JSONObject.NULL);
+
+        JSONObject couchDBData = makeSensorObject(message);
+        couchDBData.put("lux", message.get_lux());
+        couchDBData.put("temp", message.get_temperature());
+        postDataSampleToCouch(couchDBData);
 
         // Create the sensor data array
         JSONArray arrayData = new JSONArray();
@@ -117,14 +137,26 @@ public class RESTClient {
         representation.setMediaType(MediaType.APPLICATION_JSON);
 
         // Print representation for debugging
-        System.out.println(representation.getText());
+        //System.out.println(representation.getText());
 
         // Perform the POST
         Representation result = energyDataSampleClientResource.post(representation);
 
         // Handle the result
         handlePost(energyDataSampleClientResource, result);
+    }
 
+    public void postDataSampleToCouch(JSONObject jsonMessage) {
+
+        StringRepresentation representation = new StringRepresentation(jsonMessage.toString());
+        representation.setMediaType(MediaType.APPLICATION_JSON);
+
+        Representation result = couchDBResource.post(representation);
+        try {
+            System.out.println(result.getText());
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
     }
 
 
@@ -256,20 +288,13 @@ public class RESTClient {
      * Returns JSON object encapsulating the sensor data for both: temperature
      * and light reading. Also timestamps the reading
      */
-    private JSONObject makeSensorObject(SerialMsg message, boolean isTempPacket)
+    private JSONObject makeSensorObject(SerialMsg message)
             throws JSONException {
 
         JSONObject sensorData = new JSONObject();
         sensorData.put("sensorId", getSensorId(message.get_srcid()));
         sensorData.put("nodeId", message.get_srcid());
         sensorData.put("timestamp", (new Date()).getTime());
-        if (isTempPacket) {
-            sensorData.put("temp", message.get_temperature());
-            sensorData.put("lux", JSONObject.NULL);
-        } else {
-            sensorData.put("lux", message.get_lux());
-            sensorData.put("temp", JSONObject.NULL);
-        }
         return sensorData;
     }
 }
