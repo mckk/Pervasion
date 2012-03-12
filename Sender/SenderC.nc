@@ -159,7 +159,7 @@ implementation
   // If both temperature and light readings occured, send the data
   task void sendData()
   {
-    if(temperatureRead && luxRead) {
+    if(temperatureRead && luxRead && !AMBusy) {
       DataMsg *pkt = NULL;
       call Leds.led2On();
       
@@ -168,7 +168,7 @@ implementation
       pkt->temp           = temperature;
       pkt->lux	          = lux;
       
-      if(!AMBusy && call DataSend.send(AM_BROADCAST_ADDR, &datapkt, sizeof(DataMsg)) == SUCCESS) {
+      if(call DataSend.send(AM_BROADCAST_ADDR, &datapkt, sizeof(DataMsg)) == SUCCESS) {
         AMBusy = TRUE;
       }
     }
@@ -225,12 +225,14 @@ implementation
         // turn on red led
         call Leds.led0On();
 
-        // send the fire message
-        pkt = (FireMsg *)(call DataPacket.getPayload(&datapkt, sizeof(FireMsg)));
-        pkt->srcid = TOS_NODE_ID;
+        if(!AMBusy) {
+          // send the fire message
+          pkt = (FireMsg *)(call DataPacket.getPayload(&datapkt, sizeof(FireMsg)));
+          pkt->srcid = TOS_NODE_ID;
 
-        if(!AMBusy && call FireMsgSend.send(BASE_ADDR, &datapkt, sizeof(FireMsg)) == SUCCESS){
-          AMBusy = TRUE;
+          if(call FireMsgSend.send(BASE_ADDR, &datapkt, sizeof(FireMsg)) == SUCCESS){
+            AMBusy = TRUE;
+          }
         }
       }
     } else {

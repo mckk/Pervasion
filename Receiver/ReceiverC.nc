@@ -51,12 +51,14 @@ implementation
 //-----------------TIMER EVENTS------------------------------------//
   event void SyncTimer.fired()
   {
-    // On fired broadcast sync message
-    TimerRestartMsg *pkt = NULL;
-    pkt = (TimerRestartMsg *)(call TimerPacket.getPayload(&datapkt, sizeof(TimerRestartMsg)));
-    pkt -> srcid = TOS_NODE_ID;
-    if (!AMBusy && call TimerSend.send(AM_BROADCAST_ADDR, &datapkt, sizeof(TimerRestartMsg)) == SUCCESS){
-      AMBusy = TRUE;
+    if (!AMBusy) {
+      // On fired broadcast sync message
+      TimerRestartMsg *pkt = NULL;
+      pkt = (TimerRestartMsg *)(call TimerPacket.getPayload(&datapkt, sizeof(TimerRestartMsg)));
+      pkt -> srcid = TOS_NODE_ID;
+      if (call TimerSend.send(AM_BROADCAST_ADDR, &datapkt, sizeof(TimerRestartMsg)) == SUCCESS){
+        AMBusy = TRUE;
+      }
     }
   }
 
@@ -82,55 +84,59 @@ implementation
   
   event message_t * FireMsgReceive.receive(message_t * msg, void * payload, uint8_t len)
   {
-    FireMsg * fire_pkt = NULL;
-    SerialMsg * s_pkt = NULL;
+    if(!SerialAMBusy) {
+      FireMsg * fire_pkt = NULL;
+      SerialMsg * s_pkt = NULL;
 
-    if (len != sizeof(FireMsg)) {
-      return msg;
+      if (len != sizeof(FireMsg)) {
+        return msg;
+      }
+      
+      fire_pkt = (FireMsg *) payload;
+
+      s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
+      
+      s_pkt->header      = SERIALMSG_HEADER;
+      s_pkt->srcid       = fire_pkt->srcid;
+      s_pkt->fire        = TRUE;
+      s_pkt->temperature = 0;
+      s_pkt->lux         = 0;
+
+      if (call SerialSend.send(AM_BROADCAST_ADDR, &serialpkt, sizeof(SerialMsg)) == SUCCESS) {
+        SerialAMBusy = TRUE;
+      } 
+
+      call Leds.led1Toggle();
     }
-    
-    fire_pkt = (FireMsg *) payload;
-
-    s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
-    
-    s_pkt->header      = SERIALMSG_HEADER;
-    s_pkt->srcid       = fire_pkt->srcid;
-    s_pkt->fire        = TRUE;
-    s_pkt->temperature = 0;
-    s_pkt->lux         = 0;
-
-    if (!SerialAMBusy && (call SerialSend.send(AM_BROADCAST_ADDR, &serialpkt, sizeof(SerialMsg)) == SUCCESS)) {
-      SerialAMBusy = TRUE;
-    } 
-
-    call Leds.led1Toggle();
     return msg;
   }
 
   event message_t * DataReceive.receive(message_t * msg, void * payload, uint8_t len)
   {
-    SerialMsg * s_pkt = NULL;
-    DataMsg * d_pkt = NULL;
-    
-    if(len != sizeof(DataMsg)) {
-      return msg;
-    }
-    
-    d_pkt = (DataMsg *) payload; 
-    
-    s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
-    
-    s_pkt->header      = SERIALMSG_HEADER;
-    s_pkt->srcid       = d_pkt->srcid;
-    s_pkt->temperature = d_pkt->temp;
-    s_pkt->lux         = d_pkt->lux;
-    s_pkt->fire        = FALSE;
-    
-    if (!SerialAMBusy && (call SerialSend.send(AM_BROADCAST_ADDR, &serialpkt, sizeof(SerialMsg)) == SUCCESS)) {
-      SerialAMBusy = TRUE;
-    } 
+    if(!SerialAMBusy) {
+      SerialMsg * s_pkt = NULL;
+      DataMsg * d_pkt = NULL;
+      
+      if(len != sizeof(DataMsg)) {
+        return msg;
+      }
+      
+      d_pkt = (DataMsg *) payload; 
+      
+      s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
+      
+      s_pkt->header      = SERIALMSG_HEADER;
+      s_pkt->srcid       = d_pkt->srcid;
+      s_pkt->temperature = d_pkt->temp;
+      s_pkt->lux         = d_pkt->lux;
+      s_pkt->fire        = FALSE;
+      
+      if (call SerialSend.send(AM_BROADCAST_ADDR, &serialpkt, sizeof(SerialMsg)) == SUCCESS) {
+        SerialAMBusy = TRUE;
+      } 
 
-    call Leds.led0Toggle();
+      call Leds.led0Toggle();
+    }
         
     return msg;
   }
