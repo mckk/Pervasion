@@ -118,7 +118,7 @@ public class RESTClient {
         double temp = convertTemp(message.get_temperature());
         //System.out.println(temp);
 
-        temperatureData.put("temp", message.get_temperature());
+        temperatureData.put("temp", temp);
         temperatureData.put("lux", JSONObject.NULL);
 
         JSONObject lightData = makeSensorObject(message);
