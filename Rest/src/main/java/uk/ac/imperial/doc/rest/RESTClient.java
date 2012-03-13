@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.json.JSONArray;
@@ -37,6 +38,9 @@ public class RESTClient {
     // Number of nodes
     private static final int NODES_NUM = 3;
 
+    // Number of couch db request to queue
+    private static final int REQUEST_NUM = 1000;
+
     // RESTlet resource objects
     private ClientResource energyDataSampleClientResource;
     private ClientResource energyEventClientResource;
@@ -48,6 +52,9 @@ public class RESTClient {
 
     // Indicating which nodes reported fire
     private ConcurrentHashMap<Integer, Boolean> fireMap;
+
+    // CouchDB child thread for updating database
+    private CouchDBThread couchThread;
 
     public RESTClient() {
 
@@ -73,6 +80,10 @@ public class RESTClient {
 
         // initialize sensor-node mapping
         sensorNodeMapping = new HashMap<Integer, Integer>();
+
+        // initialize couchdb thread
+        couchThread = new CouchDBThread();
+        couchThread.start();
     }
 
     /**
@@ -128,7 +139,7 @@ public class RESTClient {
         JSONObject couchDBData = makeSensorObject(message);
         couchDBData.put("lux", message.get_lux());
         couchDBData.put("temp", temp);
-        postDataSampleToCouch(couchDBData);
+        couchThread.postData(couchDBData);
 
         // Create the sensor data array
         JSONArray arrayData = new JSONArray();
@@ -150,19 +161,6 @@ public class RESTClient {
 
         // Handle the result
         handlePost(energyDataSampleClientResource, result);
-    }
-
-    public void postDataSampleToCouch(JSONObject jsonMessage) {
-
-        StringRepresentation representation = new StringRepresentation(jsonMessage.toString());
-        representation.setMediaType(MediaType.APPLICATION_JSON);
-
-        Representation result = couchDBResource.post(representation);
-        try {
-            System.out.println(result.getText());
-        } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        }
     }
 
 
@@ -320,6 +318,50 @@ public class RESTClient {
         double rthr = r1*(adc_fs - moteTemperature) / moteTemperature;
         double tempTemp =  1/ (a + b * Math.log(rthr) + c * Math.pow(Math.log(rthr),3 ));
         return tempTemp - 273.15;
+
+    }
+
+    /*
+     *
+     */
+    private class CouchDBThread extends Thread {
+
+        private ArrayBlockingQueue<JSONObject> requestQueue;
+
+        public CouchDBThread() {
+            requestQueue = new ArrayBlockingQueue<JSONObject>(REQUEST_NUM);
+        }
+
+        public void postData(JSONObject obj) {
+            if (requestQueue.remainingCapacity() != 0) {
+                requestQueue.add(obj);
+            }
+        }
+
+
+        public void run() {
+            while (true) {
+                try {
+                    JSONObject msg = requestQueue.take();
+                    postDataSampleToCouch(msg);
+                } catch (InterruptedException e) {
+                    System.err.println("Error while draining couch queue \n" + e);
+                }
+            }
+        }
+
+        private void postDataSampleToCouch(JSONObject jsonMessage) {
+
+            StringRepresentation representation = new StringRepresentation(jsonMessage.toString());
+            representation.setMediaType(MediaType.APPLICATION_JSON);
+
+            Representation result = couchDBResource.post(representation);
+            try {
+                System.out.println(result.getText());
+            } catch (IOException e) {
+                System.err.println("Error while posting to couch db \n" + e);
+            }
+        }
 
     }
 }

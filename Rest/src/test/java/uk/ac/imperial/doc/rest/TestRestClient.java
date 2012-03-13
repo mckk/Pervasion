@@ -44,6 +44,6 @@ public class TestRestClient {
         set1.add(1);
         set1.add(2);
 
-        client.postFireEvent(set1);
+        //client.postFireEvent(set1);
     }
 }
