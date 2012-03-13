@@ -345,7 +345,7 @@ public class RESTClient {
                 try {
                     Thread.sleep(10000);
                     ArrayList<JSONObject> objects = new ArrayList<JSONObject>();
-                    requestQueue.drainTo(objects, 50);
+                    requestQueue.drainTo(objects);
 
                     if (!objects.isEmpty()) {
                         postDataSampleToCouch(objects);
