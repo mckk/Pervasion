@@ -90,15 +90,23 @@ implementation
 // -----------------SEND MESSAGE TASKS-----------------------------------------//
   task void sendFireMessage() 
   {
+    // declarations
+    SerialMsg * s_pkt = NULL;
+    FireMsg msg;
+    FireMsg* fire_pkt;
+
+    if (call FireQueue.empty()) {
+      return;
+    }
+
     // drain the queue
-    FireMsg msg = call FireQueue.dequeue();
-    FireMsg* fire_pkt = &msg; 
+    msg = call FireQueue.dequeue();
+    fire_pkt = &msg; 
 
     if(!SerialAMBusy) {
       // SerialAMBusy should never be true when the task is being called
       // but the check is included as the author is a defensive programmer
 
-      SerialMsg * s_pkt = NULL;
       s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
       
       // Set the serial fire message
@@ -120,14 +128,22 @@ implementation
 
   task void sendDataMessage() 
   {
+    // declarations
+    DataMsg d_msg;
+    DataMsg* d_pkt;
+    SerialMsg * s_pkt = NULL;
+
+    if (call DataQueue.empty()) {
+      return;
+    }
+
     // Drain the queue
-    DataMsg d_msg = call DataQueue.dequeue();
-    DataMsg* d_pkt = &d_msg;
+    d_msg = call DataQueue.dequeue();
+    d_pkt = &d_msg;
 
     if(!SerialAMBusy) {
-      // again, defensive programming, as this should not be null
+      // again, defensive programming, as this should not be true
 
-      SerialMsg * s_pkt = NULL;
       s_pkt = (SerialMsg *)(call SerialPacket.getPayload(&serialpkt, sizeof(SerialMsg)));
       
       // create serial msg
