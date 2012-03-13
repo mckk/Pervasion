@@ -35,6 +35,8 @@ public class TestRestClient {
         client.postDataSamples(tempMsg);
         client.postDataSamples(luxMsg);
         client.postDataSamples(mixedMsg);
+
+        Thread.sleep(20000);
     }
 
     @Test
