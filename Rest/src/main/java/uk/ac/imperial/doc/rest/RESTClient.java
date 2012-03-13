@@ -1,6 +1,7 @@
 package uk.ac.imperial.doc.rest;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Set;
@@ -61,7 +62,7 @@ public class RESTClient {
         // Initialize client resource objects
         String energyDataURL = "http://" + dataCollectionAddr1 + ":8080/energy-data-service/energyInfo/dataSample";
         String energyEventURL = "http://" + dataCollectionAddr1 + ":8080/energy-data-service/energyInfo/event";
-        String dbAddress = "http://" + dbAddr + ":5984/sensor_data";
+        String dbAddress = "http://" + dbAddr + ":5984/sensor_data/_bulk_docs";
 
         energyDataSampleClientResource = new ClientResource(energyDataURL);
         energyEventClientResource = new ClientResource(energyEventURL);
@@ -342,17 +343,32 @@ public class RESTClient {
         public void run() {
             while (true) {
                 try {
-                    JSONObject msg = requestQueue.take();
-                    postDataSampleToCouch(msg);
+                    Thread.sleep(10000);
+                    ArrayList<JSONObject> objects = new ArrayList<JSONObject>();
+                    requestQueue.drainTo(objects, 50);
+
+                    if (!objects.isEmpty()) {
+                        postDataSampleToCouch(objects);
+                    }
                 } catch (InterruptedException e) {
                     System.err.println("Error while draining couch queue \n" + e);
                 }
             }
         }
 
-        private void postDataSampleToCouch(JSONObject jsonMessage) {
+        private void postDataSampleToCouch(ArrayList<JSONObject> msgs) {
 
-            StringRepresentation representation = new StringRepresentation(jsonMessage.toString());
+            JSONObject toSend = new JSONObject();
+
+            try {
+                toSend.put("docs" , msgs);
+            } catch (JSONException e) {
+                System.err.println("Error while creating json array: \n" + e);
+            }
+
+            System.out.println(toSend.toString());
+
+            StringRepresentation representation = new StringRepresentation(toSend.toString());
             representation.setMediaType(MediaType.APPLICATION_JSON);
 
             Representation result = couchDBResource.post(representation);
