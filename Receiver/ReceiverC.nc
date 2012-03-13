@@ -148,7 +148,7 @@ implementation
   }
 
 
-//-----------------RADIO EVENTS------------------------------------//
+//-----------------DATA EVENTS------------------------------------//
   event void AMControl.startDone(error_t err)
   {
     if (err == SUCCESS) {
@@ -163,11 +163,6 @@ implementation
     if(err == SUCCESS) {
       AMBusy = TRUE;
     }
-  }
-  
-  event void TimerSend.sendDone(message_t *msg, error_t error)
-  {
-    AMBusy = FALSE;
   }
   
   event message_t * FireMsgReceive.receive(message_t * msg, void * payload, uint8_t len)
